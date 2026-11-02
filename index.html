@@ -424,16 +424,18 @@ footer{color:var(--muted);font-size:12px;text-align:center;padding-block:10px 30
 
     <!-- ACCESOS -->
     <section class="view" id="v-acc" hidden>
-      <div class="dayhead"><h2>Accesos</h2><span class="date">Una clave por persona. Desactive la clave de quien ya no deba entrar.</span></div>
+      <div class="dayhead"><h2>Accesos</h2><span class="date">Una clave por persona; desactive la de quien ya no deba entrar.</span></div>
       <div class="card stack">
         <form id="accForm" class="calform">
-          <div class="field wide"><label for="accNombre">Nombre de la persona</label><input type="text" id="accNombre" placeholder="Ej: María Pérez · Inspectora" autocomplete="off" required></div>
-          <div class="field"><label for="accRol">Tipo de acceso</label><select id="accRol"><option value="usuario">Usuario (registra asistencia)</option><option value="admin">Administrador (además gestiona accesos)</option></select></div>
+          <div class="field wide"><label for="accNombre">Nombre completo</label><input type="text" id="accNombre" placeholder="Ej: María Pérez Soto" autocomplete="off" required></div>
+          <div class="field"><label for="accCargo">Cargo</label><input type="text" id="accCargo" placeholder="Ej: Asistente de la Educación" autocomplete="off"></div>
+          <div class="field"><label for="accRol">Permiso</label><select id="accRol"><option value="editor">Editor (registra asistencia)</option><option value="admin">Administrador (además gestiona accesos)</option><option value="lectura">Solo lectura (solo consulta)</option></select></div>
+          <div class="field"><label for="accClave">Clave (opcional)</label><input type="text" id="accClave" placeholder="Ej: MPS · vacío = automática" autocomplete="off" maxlength="20"></div>
           <button class="btn primary" type="submit" id="accCrear">Crear clave</button>
         </form>
         <div id="accNueva" class="notice" hidden></div>
       </div>
-      <div class="scroll" style="margin-top:14px"><table class="grid" id="accTabla"><thead><tr><th>Nombre</th><th>Tipo</th><th>Clave</th><th>Estado</th><th></th></tr></thead><tbody id="accLista"></tbody></table></div>
+      <div class="scroll" style="margin-top:14px"><table class="grid" id="accTabla"><thead><tr><th>Nombre</th><th>Permiso</th><th>Clave</th><th>Estado</th><th></th></tr></thead><tbody id="accLista"></tbody></table></div>
     </section>
 
     <!-- CURSOS -->
@@ -605,7 +607,7 @@ function pedirClave(cfg){
   return new Promise(res=>{
     const g=document.createElement("div");
     g.style.cssText="position:fixed;inset:0;z-index:1000;background:var(--navy-deep);display:flex;align-items:center;justify-content:center;padding:16px";
-    g.innerHTML='<form id="gateF" style="background:var(--surface);color:var(--fg);border-radius:10px;padding:28px;width:100%;max-width:360px;display:flex;flex-direction:column;gap:12px;border-top:4px solid var(--gold);text-align:center"><img id="gateLogo" alt="Insignia del Instituto Comercial Alberto Valenzuela Llanos" style="height:120px;width:auto;max-width:100%;object-fit:contain;align-self:center"><div style="font-family:var(--f-display);font-size:13px;font-weight:600;letter-spacing:.08em;color:var(--muted);text-transform:uppercase">Instituto Comercial Alberto Valenzuela Llanos · San Fernando</div><div style="font-family:var(--f-display);font-size:26px;font-weight:700;line-height:1.1">Control de Asistencia Diaria</div><div style="color:var(--muted)">Ingrese la clave de acceso del Instituto.</div><input id="gateP" type="password" autocomplete="current-password" placeholder="Clave" style="font:inherit;padding:10px 12px;border:1px solid var(--line);border-radius:6px;background:var(--surface);color:var(--fg)"><div id="gateE" style="color:var(--bad);min-height:1.2em"></div><button type="submit" style="font:inherit;font-weight:600;padding:10px;border:0;border-radius:6px;background:var(--navy);color:var(--on-band);cursor:pointer">Entrar</button></form>';
+    g.innerHTML='<form id="gateF" style="background:var(--surface);color:var(--fg);border-radius:10px;padding:28px;width:100%;max-width:360px;display:flex;flex-direction:column;gap:12px;border-top:4px solid var(--gold);text-align:center"><img id="gateLogo" alt="Insignia del Instituto Comercial Alberto Valenzuela Llanos" style="height:120px;width:auto;max-width:100%;object-fit:contain;align-self:center"><div style="font-family:var(--f-display);font-size:13px;font-weight:600;letter-spacing:.08em;color:var(--muted);text-transform:uppercase">Instituto Comercial Alberto Valenzuela Llanos · San Fernando</div><div style="font-family:var(--f-display);font-size:26px;font-weight:700;line-height:1.1">Control de Asistencia Diaria</div><div style="color:var(--muted)">Ingrese su clave personal.</div><input id="gateP" type="password" autocomplete="current-password" placeholder="Clave" style="font:inherit;padding:10px 12px;border:1px solid var(--line);border-radius:6px;background:var(--surface);color:var(--fg)"><div id="gateE" style="color:var(--bad);min-height:1.2em"></div><button type="submit" style="font:inherit;font-weight:600;padding:10px;border:0;border-radius:6px;background:var(--navy);color:var(--on-band);cursor:pointer">Entrar</button></form>';
     document.body.appendChild(g);
     const lg=document.querySelector(".band img");if(lg)g.querySelector("#gateLogo").src=lg.src;else g.querySelector("#gateLogo").remove();
     const f=g.querySelector("#gateF"),p=g.querySelector("#gateP"),e=g.querySelector("#gateE");p.focus();
@@ -620,6 +622,7 @@ async function iniciarSupabase(cfg,pw){
   const me=await miAcceso();
   if(me&&me.id){
     S.uid=me.id;S.nombre=me.nombre;S.isAdmin=me.rol==="admin";
+    if(me.rol==="lectura"){S.canWrite=false;const n=$("#modeNote");n.hidden=false;n.className="notice";n.textContent="Tiene acceso de solo lectura: puede consultar la asistencia, pero no registrarla ni modificarla.";}
     try{const r=await SB.rpc("accesos_nombres");S.nombres={};(r.data||[]).forEach(x=>{S.nombres[x.id]=x.nombre;});}catch(e){}
     $("#tab-acc").hidden=!S.isAdmin;
   }else{
@@ -631,7 +634,7 @@ async function iniciarSupabase(cfg,pw){
 }
 /* ---------- Accesos (solo administrador) ---------- */
 async function copiar(t){try{await navigator.clipboard.writeText(t);toast("Copiado");}catch(e){const a=document.createElement("textarea");a.value=t;document.body.appendChild(a);a.select();try{document.execCommand("copy");toast("Copiado");}catch(x){toast("No se pudo copiar");}a.remove();}}
-const mensajeAcceso=(nombre,clave)=>"Hola "+nombre+", ingrese a "+location.href.split("#")[0]+" con su clave personal: "+clave+" (no la comparta).";
+const mensajeAcceso=(nombre,clave)=>"Hola "+String(nombre).split(" ")[0]+", ingrese a "+location.href.split("#")[0]+" con su clave personal: "+clave+" (no la comparta).";
 let accVer=new Set();
 async function renderAcc(){
   const box=$("#accLista");if(!SB||!S.isAdmin){box.innerHTML="";return;}
@@ -642,19 +645,19 @@ async function renderAcc(){
 function drawAcc(){
   const box=$("#accLista");
   if(!S.acc.length){box.innerHTML=`<tr><td colspan="5" class="empty"><b>Aún no hay accesos</b>Cree la primera clave arriba.</td></tr>`;return;}
-  box.innerHTML=S.acc.map(a=>`<tr data-id="${esc(a.id)}"><td>${esc(a.nombre)}${S.uid&&String(a.id).startsWith(S.uid)?" <small>(usted)</small>":""}</td><td>${a.rol==="admin"?"Administrador":"Usuario"}</td><td><code class="clv">${accVer.has(a.id)?esc(a.clave):"••••-••••-••••"}</code></td><td>${a.activo?"Activa":"<b style='color:var(--bad)'>Desactivada</b>"}</td><td style="white-space:nowrap"><button class="btn small" data-act="ver">${accVer.has(a.id)?"Ocultar":"Ver"}</button> <button class="btn small" data-act="msg">Copiar mensaje</button> <button class="btn small" data-act="est">${a.activo?"Desactivar":"Activar"}</button> <button class="btn small danger" data-act="del">Eliminar</button></td></tr>`).join("");
+  box.innerHTML=S.acc.map(a=>`<tr data-id="${esc(a.id)}"><td>${esc(a.nombre)}${S.uid&&String(a.id).startsWith(S.uid)?" <small>(usted)</small>":""}${a.cargo?`<br><small style="color:var(--muted)">${esc(a.cargo)}</small>`:""}</td><td>${a.rol==="admin"?"Administrador":a.rol==="lectura"?"Solo lectura":"Editor"}</td><td><code class="clv">${accVer.has(a.id)?esc(a.clave):"••••"}</code></td><td>${a.activo?"Activa":"<b style='color:var(--bad)'>Desactivada</b>"}</td><td style="white-space:nowrap"><button class="btn small" data-act="ver">${accVer.has(a.id)?"Ocultar":"Ver"}</button> <button class="btn small" data-act="msg">Copiar mensaje</button> <button class="btn small" data-act="est">${a.activo?"Desactivar":"Activar"}</button> <button class="btn small danger" data-act="del">Eliminar</button></td></tr>`).join("");
 }
 $("#accForm").addEventListener("submit",async ev=>{
   ev.preventDefault();if(!SB)return;
   const nombre=$("#accNombre").value.trim();if(!nombre)return;
   const b=$("#accCrear");b.disabled=true;
-  const r=await SB.rpc("acceso_crear",{p_nombre:nombre,p_rol:$("#accRol").value});
+  const r=await SB.rpc("acceso_crear",{p_nombre:nombre,p_rol:$("#accRol").value,p_cargo:$("#accCargo").value.trim(),p_clave:$("#accClave").value.trim()||null});
   b.disabled=false;
-  if(r.error){toast("No se pudo crear la clave: "+r.error.message);return;}
+  if(r.error){toast(/duplicate|unique/i.test(r.error.message)?"Esa clave ya existe. Use otra.":"No se pudo crear la clave: "+r.error.message);return;}
   const n=$("#accNueva");n.hidden=false;n.className="notice";
   n.innerHTML=`Clave creada para <b>${esc(nombre)}</b>: <code class="clv" style="font-size:1.15em">${esc(r.data)}</code> <button class="btn small" id="accCopia" type="button">Copiar mensaje para enviar</button>`;
   $("#accCopia").onclick=()=>copiar(mensajeAcceso(nombre,r.data));
-  $("#accNombre").value="";renderAcc();
+  $("#accNombre").value="";$("#accCargo").value="";$("#accClave").value="";renderAcc();
 });
 let accDel=null;
 $("#accLista").addEventListener("click",async ev=>{
