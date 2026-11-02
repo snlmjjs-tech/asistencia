@@ -5,6 +5,7 @@ window.makeSupabaseDb = function (sb) {
   const snapOf = (id, row) => ({ id, exists: !!row, data: () => (row ? row.data : undefined), metadata: { fromCache: false, hasPendingWrites: false } });
   const qsnap = rows => ({ docs: rows.map(r => snapOf(r.id, r)), empty: !rows.length, metadata: { fromCache: false, hasPendingWrites: false } });
   const fail = r => { if (r.error) throw r.error; return r; };
+  const track = p => { window.__busy = (window.__busy || 0) + 1; window.dispatchEvent(new Event("incosaf:busy")); const done = () => { window.__busy = Math.max(0, window.__busy - 1); window.dispatchEvent(new Event("incosaf:busy")); }; return Promise.resolve(p).then(r => { done(); return r; }, e => { done(); throw e; }); };
 
   function watch(coll, refetch, cb, err, every) {
     let stop = false, t = null;
@@ -18,12 +19,12 @@ window.makeSupabaseDb = function (sb) {
   }
 
   function docRef(coll, id) {
-    const get = async () => { const r = fail(await sb.from(T).select("id,data").eq("coll", coll).eq("id", id).maybeSingle()); return snapOf(id, r.data); };
+    const get = async () => { const r = fail(await track(sb.from(T).select("id,data").eq("coll", coll).eq("id", id).maybeSingle())); return snapOf(id, r.data); };
     return {
       id,
       get,
-      set: async data => { fail(await sb.from(T).upsert({ coll, id, data, updated_at: new Date().toISOString() })); },
-      delete: async () => { fail(await sb.from(T).delete().eq("coll", coll).eq("id", id)); },
+      set: async data => { fail(await track(sb.from(T).upsert({ coll, id, data, updated_at: new Date().toISOString() }))); },
+      delete: async () => { fail(await track(sb.from(T).delete().eq("coll", coll).eq("id", id))); },
       onSnapshot: (cb, err) => watch(coll, get, cb, err, 8000),
       collection: name => collRef(coll + "/" + id + "/" + name)
     };
@@ -36,7 +37,7 @@ window.makeSupabaseDb = function (sb) {
         const col = "data->>" + f;
         q = op === "==" ? q.eq(col, v) : op === ">=" ? q.gte(col, v) : op === "<=" ? q.lte(col, v) : op === ">" ? q.gt(col, v) : q.lt(col, v);
       }
-      return qsnap(fail(await q.limit(lim)).data || []);
+      return qsnap(fail(await track(q.limit(lim))).data || []);
     };
     return {
       doc: id => docRef(coll, id),
