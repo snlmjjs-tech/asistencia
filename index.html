@@ -566,11 +566,17 @@ let seeded=false;
 function avisoDb(e){try{const n=$("#modeNote");n.hidden=false;n.className="notice warn";n.textContent="Error de la base de datos: "+((e&&(e.message||e.details||e.code))||e);}catch(x){}}
 async function refrescarCursos(){try{const snap=await db.collection("cursos").get();const m={};snap.docs.forEach(x=>{m[x.id]=x.data();});S.cursos=m;renderAll();}catch(e){avisoDb(e);}}
 async function sembrarNomina(){
-  if(seeded||!S.canWrite||todosCursos().length)return;seeded=true;
+  if(seeded||!S.canWrite)return;
+  if(!db&&todosCursos().length)return;
+  seeded=true;
+  if(db){try{if((await db.collection("config").doc("seed2026").get()).exists)return;}catch(e){avisoDb(e);return;}}
   const y0=S.esc;S.esc=2026;
   try{for(const [nombre,al] of NOMINA_2026){
+    if(db&&todosCursos().some(c=>cursoAnio(c)===2026&&slug(c.nombre)===slug(nombre)))continue;
     await guardarCurso(nombre,al.map(([n,rut,nom,fr])=>({n,rut,nombre:nom,retirado:!!fr,fechaRetiro:fr})));
-  }}catch(e){console.warn(e);avisoDb(e);}
+  }
+  if(db)await db.collection("config").doc("seed2026").set({ok:true,ts:new Date().toISOString()});
+  }catch(e){console.warn(e);avisoDb(e);}
   S.esc=y0;if(db)await refrescarCursos();const c=sortedCursos(2026)[0];if(c&&!S.cursoId)S.cursoId=c.id;
   renderAll();toast("Nómina 2026 cargada: "+NOMINA_2026.length+" cursos");
 }
@@ -582,7 +588,7 @@ async function boot(){
     db=window.makeSupabaseDb(window.supabase.createClient(cfg.url,cfg.anonKey));
     S.uid=id||"anon";S.isAdmin=true;
     db.collection("calendario").onSnapshot(snap=>{const m={};snap.docs.forEach(x=>{const d=x.data();m[x.id]=Array.isArray(d.dias)?d.dias:[];});S.cal=m;refreshCal();},e=>console.warn(e));
-    db.collection("cursos").onSnapshot(snap=>{const m={};snap.docs.forEach(x=>{m[x.id]=x.data();});S.cursos=m;renderAll();if(!snap.docs.length)sembrarNomina();},e=>{console.warn(e);avisoDb(e);});
+    db.collection("cursos").onSnapshot(snap=>{const m={};snap.docs.forEach(x=>{m[x.id]=x.data();});S.cursos=m;renderAll();sembrarNomina();},e=>{console.warn(e);avisoDb(e);});
     return;
   }
   if(!window.claude||!window.claude.use){useLocal();return;}
