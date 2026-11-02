@@ -17,3 +17,7 @@ create policy "docs_anon_all" on public.docs
 
 -- Actualización en vivo entre usuarios.
 alter publication supabase_realtime add table public.docs;
+
+-- Permisos de tabla para el rol anon (sin esto aparece "permission denied for table docs").
+grant usage on schema public to anon, authenticated;
+grant select, insert, update, delete on public.docs to anon, authenticated;
