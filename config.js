@@ -2,5 +2,5 @@
    (Supabase > Project Settings > API). La clave anon es pública por diseño. */
 window.SUPABASE_CONFIG = {
   url: "https://fblhqgiflxqdrxdyzbrf.supabase.co",
-  anonKey: ""   // ej: "eyJhbGciOi..."
+  anonKey: "sb_publishable_4x0SGlPrdhAVYyJRgymRHA_1ShtugBj"
 };
