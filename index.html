@@ -580,15 +580,35 @@ async function sembrarNomina(){
   S.esc=y0;if(db)await refrescarCursos();const c=sortedCursos(2026)[0];if(c&&!S.cursoId)S.cursoId=c.id;
   renderAll();toast("Nómina 2026 cargada: "+NOMINA_2026.length+" cursos");
 }
+/* ---------- Clave compartida de acceso (se valida en el servidor) ---------- */
+function clienteSb(cfg,pw){return window.supabase.createClient(cfg.url,cfg.anonKey,{global:{headers:{"x-clave":pw}}});}
+async function claveOk(cfg,pw){try{const r=await clienteSb(cfg,pw).rpc("clave_valida");return !r.error&&r.data===true;}catch(e){return false;}}
+function pedirClave(cfg){
+  return new Promise(res=>{
+    const g=document.createElement("div");
+    g.style.cssText="position:fixed;inset:0;z-index:1000;background:var(--navy-deep);display:flex;align-items:center;justify-content:center;padding:16px";
+    g.innerHTML='<form id="gateF" style="background:var(--surface);color:var(--fg);border-radius:10px;padding:28px;width:100%;max-width:360px;display:flex;flex-direction:column;gap:12px;border-top:4px solid var(--gold)"><div style="font-family:var(--f-display);font-size:26px;font-weight:700;line-height:1.1">Control de Asistencia Diaria</div><div style="color:var(--muted)">Ingrese la clave de acceso del Instituto.</div><input id="gateP" type="password" autocomplete="current-password" placeholder="Clave" style="font:inherit;padding:10px 12px;border:1px solid var(--line);border-radius:6px;background:var(--surface);color:var(--fg)"><div id="gateE" style="color:var(--bad);min-height:1.2em"></div><button type="submit" style="font:inherit;font-weight:600;padding:10px;border:0;border-radius:6px;background:var(--navy);color:var(--on-band);cursor:pointer">Entrar</button></form>';
+    document.body.appendChild(g);
+    const f=g.querySelector("#gateF"),p=g.querySelector("#gateP"),e=g.querySelector("#gateE");p.focus();
+    f.addEventListener("submit",async ev=>{ev.preventDefault();e.textContent="";const v=p.value.trim();if(!v)return;
+      if(await claveOk(cfg,v)){try{localStorage.setItem("incosaf.clave",v);}catch(x){}g.remove();res(v);}
+      else{e.textContent="Clave incorrecta.";p.select();}});
+  });
+}
+function iniciarSupabase(cfg,pw){
+  let id="";try{id=localStorage.getItem("incosaf.dev")||"";if(!id){id="d"+Math.random().toString(36).slice(2,10);localStorage.setItem("incosaf.dev",id);}}catch(e){}
+  db=window.makeSupabaseDb(clienteSb(cfg,pw));
+  S.uid=id||"anon";S.isAdmin=true;
+  db.collection("calendario").onSnapshot(snap=>{const m={};snap.docs.forEach(x=>{const d=x.data();m[x.id]=Array.isArray(d.dias)?d.dias:[];});S.cal=m;refreshCal();},e=>console.warn(e));
+  db.collection("cursos").onSnapshot(snap=>{const m={};snap.docs.forEach(x=>{m[x.id]=x.data();});S.cursos=m;renderAll();sembrarNomina();},e=>{console.warn(e);avisoDb(e);});
+}
 async function boot(){
   renderAll();
   const cfg=window.SUPABASE_CONFIG;
   if(cfg&&cfg.url&&cfg.anonKey&&window.supabase&&window.makeSupabaseDb){
-    let id="";try{id=localStorage.getItem("incosaf.dev")||"";if(!id){id="d"+Math.random().toString(36).slice(2,10);localStorage.setItem("incosaf.dev",id);}}catch(e){}
-    db=window.makeSupabaseDb(window.supabase.createClient(cfg.url,cfg.anonKey));
-    S.uid=id||"anon";S.isAdmin=true;
-    db.collection("calendario").onSnapshot(snap=>{const m={};snap.docs.forEach(x=>{const d=x.data();m[x.id]=Array.isArray(d.dias)?d.dias:[];});S.cal=m;refreshCal();},e=>console.warn(e));
-    db.collection("cursos").onSnapshot(snap=>{const m={};snap.docs.forEach(x=>{m[x.id]=x.data();});S.cursos=m;renderAll();sembrarNomina();},e=>{console.warn(e);avisoDb(e);});
+    let pw="";try{pw=localStorage.getItem("incosaf.clave")||"";}catch(e){}
+    if(!(pw&&await claveOk(cfg,pw)))pw=await pedirClave(cfg);
+    iniciarSupabase(cfg,pw);
     return;
   }
   if(!window.claude||!window.claude.use){useLocal();return;}

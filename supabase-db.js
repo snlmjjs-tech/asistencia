@@ -6,14 +6,14 @@ window.makeSupabaseDb = function (sb) {
   const qsnap = rows => ({ docs: rows.map(r => snapOf(r.id, r)), empty: !rows.length, metadata: { fromCache: false, hasPendingWrites: false } });
   const fail = r => { if (r.error) throw r.error; return r; };
 
-  function watch(coll, refetch, cb, err) {
+  function watch(coll, refetch, cb, err, every) {
     let stop = false, t = null;
     const run = () => refetch().then(s => { if (!stop) cb(s); }).catch(e => { if (!stop && err) err(e); });
     run();
     const ch = sb.channel("w-" + coll + "-" + Math.random().toString(36).slice(2))
       .on("postgres_changes", { event: "*", schema: "public", table: T, filter: "coll=eq." + coll }, () => { clearTimeout(t); t = setTimeout(run, 150); })
       .subscribe();
-    const poll = setInterval(() => { if (!document.hidden) run(); }, 30000);
+    const poll = setInterval(() => { if (!document.hidden) run(); }, every || 30000);
     return () => { stop = true; clearTimeout(t); clearInterval(poll); sb.removeChannel(ch); };
   }
 
@@ -24,7 +24,7 @@ window.makeSupabaseDb = function (sb) {
       get,
       set: async data => { fail(await sb.from(T).upsert({ coll, id, data, updated_at: new Date().toISOString() })); },
       delete: async () => { fail(await sb.from(T).delete().eq("coll", coll).eq("id", id)); },
-      onSnapshot: (cb, err) => watch(coll, get, cb, err),
+      onSnapshot: (cb, err) => watch(coll, get, cb, err, 8000),
       collection: name => collRef(coll + "/" + id + "/" + name)
     };
   }
