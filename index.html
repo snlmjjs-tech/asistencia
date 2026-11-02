@@ -761,6 +761,8 @@ function toast(msg){const t=$("#toast");t.textContent=msg;t.hidden=false;clearTi
 /* ---------- Estado ---------- */
 const today=new Date();
 const S={cal:{},cursos:{},cursoId:null,fecha:ymd(today),mes:ymd(today).slice(0,7),view:"dia",marcas:{},canWrite:true,up:null,rosterId:null};
+S.conectando=!!(window.SUPABASE_CONFIG&&window.SUPABASE_CONFIG.url&&window.SUPABASE_CONFIG.anonKey&&window.supabase&&window.makeSupabaseDb);
+if(S.conectando)S.canWrite=false;
 try{const last=localStorage.getItem("incosaf.curso");if(last)S.cursoId=last;}catch(e){}
 const ANIO_INICIAL=2026;
 const cursoAnio=c=>+(c&&c.anio)||ANIO_INICIAL;
@@ -839,7 +841,8 @@ async function sembrarNomina(){
 let SB=null;
 function clienteSb(cfg,pw){return window.supabase.createClient(cfg.url,cfg.anonKey,{global:{headers:{"x-clave":pw}}});}
 async function miAcceso(){try{const r=await SB.rpc("mi_acceso");return r.error?null:r.data;}catch(e){return null;}}
-async function claveOk(cfg,pw){try{const r=await clienteSb(cfg,pw).rpc("clave_valida");return !r.error&&r.data===true;}catch(e){return false;}}
+window.__claveNet=false;
+async function claveOk(cfg,pw){window.__claveNet=false;try{const r=await clienteSb(cfg,pw).rpc("clave_valida");if(r.error){window.__claveNet=true;return false;}return r.data===true;}catch(e){window.__claveNet=true;return false;}}
 function pedirClave(cfg){
   return new Promise(res=>{
     const g=document.createElement("div");g.className="gate";
@@ -850,12 +853,11 @@ function pedirClave(cfg){
     f.addEventListener("submit",async ev=>{ev.preventDefault();e.textContent="";const v=p.value.trim();if(!v)return;
       bt.disabled=true;bt.textContent="Verificando…";
       if(await claveOk(cfg,v)){try{localStorage.setItem("incosaf.clave",v);}catch(x){}g.style.transition="opacity .35s";g.style.opacity="0";setTimeout(()=>g.remove(),360);res(v);}
-      else{bt.disabled=false;bt.textContent="Entrar";e.textContent="Clave incorrecta.";e.classList.remove("sh");void e.offsetWidth;e.classList.add("sh");p.select();}});
+      else{bt.disabled=false;bt.textContent="Entrar";e.textContent=window.__claveNet?"No se pudo conectar con el servidor. Revise su internet e intente de nuevo.":"Clave incorrecta.";e.classList.remove("sh");void e.offsetWidth;e.classList.add("sh");p.select();}});
   });
 }
 async function iniciarSupabase(cfg,pw){
   SB=clienteSb(cfg,pw);
-  db=window.makeSupabaseDb(SB);
   $("#ses").hidden=false;
   const me=await miAcceso();
   if(me&&me.id){
@@ -868,6 +870,9 @@ async function iniciarSupabase(cfg,pw){
     let id="";try{id=localStorage.getItem("incosaf.dev")||"";if(!id){id="d"+Math.random().toString(36).slice(2,10);localStorage.setItem("incosaf.dev",id);}}catch(e){}
     S.uid=id||"anon";S.isAdmin=true;
   }
+  db=window.makeSupabaseDb(SB);
+  S.conectando=false;if(!(me&&me.rol==="lectura"))S.canWrite=true;
+  renderAll();if(S.view==="aud")renderAud(true);
   db.collection("calendario").onSnapshot(snap=>{const m={};snap.docs.forEach(x=>{const d=x.data();m[x.id]=Array.isArray(d.dias)?d.dias:[];});S.cal=m;refreshCal();},e=>console.warn(e));
   db.collection("cursos").onSnapshot(snap=>{const m={};snap.docs.forEach(x=>{m[x.id]=x.data();});S.cursos=m;renderAll();sembrarNomina();},e=>{console.warn(e);avisoDb(e);});
 }
@@ -1446,6 +1451,7 @@ function nombreDe(id){if(id==="local")return "Este navegador";const p=audProf[id
 async function renderAud(recargar){
   const seq=++audSeq;
   const n=$("#audNota");
+  if(!db&&S.conectando){n.hidden=false;n.className="notice";n.textContent="Conectando con la base de datos…";return;}
   if(!db){n.hidden=false;n.className="notice warn";n.textContent="Modo sin conexión: el registro guarda solo los cambios hechos en este navegador y no identifica al usuario. Abra la plataforma desde claude.ai con su sesión iniciada.";}
   else if(!S.isAdmin){n.hidden=false;n.className="notice";n.textContent="Usted ve solo los cambios que hizo con su clave. El registro completo lo ve el administrador.";}
   else n.hidden=true;
