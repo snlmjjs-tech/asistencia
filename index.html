@@ -51,6 +51,10 @@ button,input,select{font:inherit;color:inherit}
 .band .sub{font-size:13px;color:#c9cff0;margin-top:4px}
 .band .who{margin-left:auto;text-align:right;font-size:12px;color:#c9cff0;min-width:0}
 .band .who b{display:block;color:#fff;font-size:13px}
+.band .ses{margin-left:12px;display:flex;flex-direction:column;align-items:flex-end;gap:4px;font-size:12px;color:#c9cff0;min-width:0;text-align:right}
+.band .ses #sesNom{max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#fff;font-weight:600}
+.band .ses button{font:inherit;font-weight:600;color:#fff;background:transparent;border:1px solid rgba(255,255,255,.45);border-radius:6px;padding:4px 10px;cursor:pointer}
+.band .ses button:hover{background:rgba(255,255,255,.12)}
 
 /* Barra de control */
 .ctl{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--surface);border-bottom:1px solid var(--line);box-shadow:0 2px 10px rgba(14,29,94,.06)}
@@ -245,6 +249,7 @@ footer{color:var(--muted);font-size:12px;text-align:center;padding-block:10px 30
 @media (max-width:560px){
   .band img{width:48px}
   .band .who{display:none}
+  .band .ses{margin-left:auto}
   .row{grid-template-columns:30px minmax(0,1fr);row-gap:6px}
   .row .rut{display:none}
   .row .marks,.row .retctl{grid-column:1 / -1;justify-content:flex-end}
@@ -266,6 +271,7 @@ footer{color:var(--muted);font-size:12px;text-align:center;padding-block:10px 30
       <div class="sub">Inspectoría General · Registro por curso</div>
     </div>
     <div class="who" id="who"><b>Año escolar</b><span id="anio"></span></div>
+    <div class="ses" id="ses" hidden><span id="sesNom"></span><button type="button" id="btnSalir">Cerrar sesión</button></div>
   </div>
 </header>
 
@@ -619,12 +625,14 @@ function pedirClave(cfg){
 async function iniciarSupabase(cfg,pw){
   SB=clienteSb(cfg,pw);
   db=window.makeSupabaseDb(SB);
+  $("#ses").hidden=false;
   const me=await miAcceso();
   if(me&&me.id){
-    S.uid=me.id;S.nombre=me.nombre;S.isAdmin=me.rol==="admin";
+    S.uid=me.id;S.nombre=me.nombre;S.isAdmin=me.rol==="admin";S.maestro=!!me.maestro;
     if(me.rol==="lectura"){S.canWrite=false;const n=$("#modeNote");n.hidden=false;n.className="notice";n.textContent="Tiene acceso de solo lectura: puede consultar la asistencia, pero no registrarla ni modificarla.";}
     try{const r=await SB.rpc("accesos_nombres");S.nombres={};(r.data||[]).forEach(x=>{S.nombres[x.id]=x.nombre;});}catch(e){}
-    $("#tab-acc").hidden=!S.isAdmin;
+    $("#tab-acc").hidden=!S.maestro;
+    $("#sesNom").textContent=me.nombre;
   }else{
     let id="";try{id=localStorage.getItem("incosaf.dev")||"";if(!id){id="d"+Math.random().toString(36).slice(2,10);localStorage.setItem("incosaf.dev",id);}}catch(e){}
     S.uid=id||"anon";S.isAdmin=true;
@@ -637,7 +645,7 @@ async function copiar(t){try{await navigator.clipboard.writeText(t);toast("Copia
 const mensajeAcceso=(nombre,clave)=>"Hola "+String(nombre).split(" ")[0]+", ingrese a "+location.href.split("#")[0]+" con su clave personal: "+clave+" (no la comparta).";
 let accVer=new Set();
 async function renderAcc(){
-  const box=$("#accLista");if(!SB||!S.isAdmin){box.innerHTML="";return;}
+  const box=$("#accLista");if(!SB||!S.maestro){box.innerHTML="";return;}
   const r=await SB.rpc("accesos_listar");
   if(r.error){box.innerHTML=`<tr><td colspan="5" class="empty"><b>No se pudo leer los accesos</b>${esc(r.error.message)}</td></tr>`;return;}
   S.acc=r.data||[];drawAcc();
@@ -672,6 +680,7 @@ $("#accLista").addEventListener("click",async ev=>{
     accDel=null;const r=await SB.rpc("acceso_eliminar",{p_id:id});if(r.error)toast(r.error.message);else{toast("Clave eliminada");renderAcc();}
   }
 });
+$("#btnSalir").addEventListener("click",()=>{try{localStorage.removeItem("incosaf.clave");}catch(e){}location.reload();});
 async function boot(){
   renderAll();
   const cfg=window.SUPABASE_CONFIG;
@@ -1502,8 +1511,8 @@ $("#delCurso").addEventListener("click",()=>{if(S.canWrite)$("#delConfirm").hidd
 $("#delNo").addEventListener("click",()=>$("#delConfirm").hidden=true);
 $("#delYes").addEventListener("click",async()=>{const id=S.rosterId;const c=S.cursos[id];try{await store.delCurso(id);S.rosterId=null;toast("Curso eliminado");audit("Curso","Eliminó el curso "+(c?.nombre||id)+" ("+((c?.alumnos||[]).length)+" alumnos en la nómina)",{curso:c?.nombre||id});}catch(e){toast("No se pudo eliminar el curso.");}});
 
-window.addEventListener("hashchange",()=>{const h=location.hash.slice(1);if(["dia","mes","anual","general","cal","aud","cursos","acc"].includes(h))setView(h);});
-const h0=location.hash.slice(1);if(["mes","anual","general","cal","aud","cursos"].concat(S.isAdmin?["acc"]:[]).includes(h0))setView(h0);
+window.addEventListener("hashchange",()=>{const h=location.hash.slice(1);if(["dia","mes","anual","general","cal","aud","cursos","acc"].includes(h)&&(h!=="acc"||S.maestro))setView(h);});
+const h0=location.hash.slice(1);if(["mes","anual","general","cal","aud","cursos"].concat(S.maestro?["acc"]:[]).includes(h0))setView(h0);
 boot();
 })();
 </script>
