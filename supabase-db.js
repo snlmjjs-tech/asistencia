@@ -13,7 +13,8 @@ window.makeSupabaseDb = function (sb) {
     const ch = sb.channel("w-" + coll + "-" + Math.random().toString(36).slice(2))
       .on("postgres_changes", { event: "*", schema: "public", table: T, filter: "coll=eq." + coll }, () => { clearTimeout(t); t = setTimeout(run, 150); })
       .subscribe();
-    return () => { stop = true; clearTimeout(t); sb.removeChannel(ch); };
+    const poll = setInterval(() => { if (!document.hidden) run(); }, 30000);
+    return () => { stop = true; clearTimeout(t); clearInterval(poll); sb.removeChannel(ch); };
   }
 
   function docRef(coll, id) {
