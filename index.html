@@ -73,6 +73,7 @@ main .wrap{padding-block:18px 48px}
 .btn.primary{background:var(--navy);border-color:var(--navy);color:#fff}
 .btn.gold{background:var(--gold);border-color:var(--gold);color:#1b1500}
 .btn.danger{color:var(--bad);border-color:var(--bad)}
+.clv{font-family:ui-monospace,Menlo,Consolas,monospace;letter-spacing:.04em}
 .btn:disabled{opacity:.5;cursor:not-allowed}
 
 .notice{border:1px solid var(--line);background:var(--surface-2);border-radius:8px;padding:10px 14px;font-size:14px;color:var(--muted);margin-bottom:14px}
@@ -298,6 +299,7 @@ footer{color:var(--muted);font-size:12px;text-align:center;padding-block:10px 30
       <button role="tab" id="tab-cal" aria-selected="false" data-view="cal">Días sin clases</button>
       <button role="tab" id="tab-aud" aria-selected="false" data-view="aud">Auditoría</button>
       <button role="tab" id="tab-cursos" aria-selected="false" data-view="cursos">Cursos y nóminas</button>
+      <button role="tab" id="tab-acc" aria-selected="false" data-view="acc" hidden>Accesos</button>
     </div>
   </div>
 </nav>
@@ -418,6 +420,20 @@ footer{color:var(--muted);font-size:12px;text-align:center;padding-block:10px 30
       </div>
       <div class="stats" id="audStats"></div>
       <div class="scroll"><table class="grid audtab" id="audTabla"></table></div>
+    </section>
+
+    <!-- ACCESOS -->
+    <section class="view" id="v-acc" hidden>
+      <div class="dayhead"><h2>Accesos</h2><span class="date">Una clave por persona. Desactive la clave de quien ya no deba entrar.</span></div>
+      <div class="card stack">
+        <form id="accForm" class="calform">
+          <div class="field wide"><label for="accNombre">Nombre de la persona</label><input type="text" id="accNombre" placeholder="Ej: María Pérez · Inspectora" autocomplete="off" required></div>
+          <div class="field"><label for="accRol">Tipo de acceso</label><select id="accRol"><option value="usuario">Usuario (registra asistencia)</option><option value="admin">Administrador (además gestiona accesos)</option></select></div>
+          <button class="btn primary" type="submit" id="accCrear">Crear clave</button>
+        </form>
+        <div id="accNueva" class="notice" hidden></div>
+      </div>
+      <div class="scroll" style="margin-top:14px"><table class="grid" id="accTabla"><thead><tr><th>Nombre</th><th>Tipo</th><th>Clave</th><th>Estado</th><th></th></tr></thead><tbody id="accLista"></tbody></table></div>
     </section>
 
     <!-- CURSOS -->
@@ -581,7 +597,9 @@ async function sembrarNomina(){
   renderAll();toast("Nómina 2026 cargada: "+NOMINA_2026.length+" cursos");
 }
 /* ---------- Clave compartida de acceso (se valida en el servidor) ---------- */
+let SB=null;
 function clienteSb(cfg,pw){return window.supabase.createClient(cfg.url,cfg.anonKey,{global:{headers:{"x-clave":pw}}});}
+async function miAcceso(){try{const r=await SB.rpc("mi_acceso");return r.error?null:r.data;}catch(e){return null;}}
 async function claveOk(cfg,pw){try{const r=await clienteSb(cfg,pw).rpc("clave_valida");return !r.error&&r.data===true;}catch(e){return false;}}
 function pedirClave(cfg){
   return new Promise(res=>{
@@ -596,20 +614,68 @@ function pedirClave(cfg){
       else{e.textContent="Clave incorrecta.";p.select();}});
   });
 }
-function iniciarSupabase(cfg,pw){
-  let id="";try{id=localStorage.getItem("incosaf.dev")||"";if(!id){id="d"+Math.random().toString(36).slice(2,10);localStorage.setItem("incosaf.dev",id);}}catch(e){}
-  db=window.makeSupabaseDb(clienteSb(cfg,pw));
-  S.uid=id||"anon";S.isAdmin=true;
+async function iniciarSupabase(cfg,pw){
+  SB=clienteSb(cfg,pw);
+  db=window.makeSupabaseDb(SB);
+  const me=await miAcceso();
+  if(me&&me.id){
+    S.uid=me.id;S.nombre=me.nombre;S.isAdmin=me.rol==="admin";
+    try{const r=await SB.rpc("accesos_nombres");S.nombres={};(r.data||[]).forEach(x=>{S.nombres[x.id]=x.nombre;});}catch(e){}
+    $("#tab-acc").hidden=!S.isAdmin;
+  }else{
+    let id="";try{id=localStorage.getItem("incosaf.dev")||"";if(!id){id="d"+Math.random().toString(36).slice(2,10);localStorage.setItem("incosaf.dev",id);}}catch(e){}
+    S.uid=id||"anon";S.isAdmin=true;
+  }
   db.collection("calendario").onSnapshot(snap=>{const m={};snap.docs.forEach(x=>{const d=x.data();m[x.id]=Array.isArray(d.dias)?d.dias:[];});S.cal=m;refreshCal();},e=>console.warn(e));
   db.collection("cursos").onSnapshot(snap=>{const m={};snap.docs.forEach(x=>{m[x.id]=x.data();});S.cursos=m;renderAll();sembrarNomina();},e=>{console.warn(e);avisoDb(e);});
 }
+/* ---------- Accesos (solo administrador) ---------- */
+async function copiar(t){try{await navigator.clipboard.writeText(t);toast("Copiado");}catch(e){const a=document.createElement("textarea");a.value=t;document.body.appendChild(a);a.select();try{document.execCommand("copy");toast("Copiado");}catch(x){toast("No se pudo copiar");}a.remove();}}
+const mensajeAcceso=(nombre,clave)=>"Hola "+nombre+", ingrese a "+location.href.split("#")[0]+" con su clave personal: "+clave+" (no la comparta).";
+let accVer=new Set();
+async function renderAcc(){
+  const box=$("#accLista");if(!SB||!S.isAdmin){box.innerHTML="";return;}
+  const r=await SB.rpc("accesos_listar");
+  if(r.error){box.innerHTML=`<tr><td colspan="5" class="empty"><b>No se pudo leer los accesos</b>${esc(r.error.message)}</td></tr>`;return;}
+  S.acc=r.data||[];drawAcc();
+}
+function drawAcc(){
+  const box=$("#accLista");
+  if(!S.acc.length){box.innerHTML=`<tr><td colspan="5" class="empty"><b>Aún no hay accesos</b>Cree la primera clave arriba.</td></tr>`;return;}
+  box.innerHTML=S.acc.map(a=>`<tr data-id="${esc(a.id)}"><td>${esc(a.nombre)}${S.uid&&String(a.id).startsWith(S.uid)?" <small>(usted)</small>":""}</td><td>${a.rol==="admin"?"Administrador":"Usuario"}</td><td><code class="clv">${accVer.has(a.id)?esc(a.clave):"••••-••••-••••"}</code></td><td>${a.activo?"Activa":"<b style='color:var(--bad)'>Desactivada</b>"}</td><td style="white-space:nowrap"><button class="btn small" data-act="ver">${accVer.has(a.id)?"Ocultar":"Ver"}</button> <button class="btn small" data-act="msg">Copiar mensaje</button> <button class="btn small" data-act="est">${a.activo?"Desactivar":"Activar"}</button> <button class="btn small danger" data-act="del">Eliminar</button></td></tr>`).join("");
+}
+$("#accForm").addEventListener("submit",async ev=>{
+  ev.preventDefault();if(!SB)return;
+  const nombre=$("#accNombre").value.trim();if(!nombre)return;
+  const b=$("#accCrear");b.disabled=true;
+  const r=await SB.rpc("acceso_crear",{p_nombre:nombre,p_rol:$("#accRol").value});
+  b.disabled=false;
+  if(r.error){toast("No se pudo crear la clave: "+r.error.message);return;}
+  const n=$("#accNueva");n.hidden=false;n.className="notice";
+  n.innerHTML=`Clave creada para <b>${esc(nombre)}</b>: <code class="clv" style="font-size:1.15em">${esc(r.data)}</code> <button class="btn small" id="accCopia" type="button">Copiar mensaje para enviar</button>`;
+  $("#accCopia").onclick=()=>copiar(mensajeAcceso(nombre,r.data));
+  $("#accNombre").value="";renderAcc();
+});
+let accDel=null;
+$("#accLista").addEventListener("click",async ev=>{
+  const bt=ev.target.closest("button[data-act]");if(!bt)return;
+  const id=bt.closest("tr").dataset.id,a=S.acc.find(x=>String(x.id)===id);if(!a)return;
+  const act=bt.dataset.act;
+  if(act==="ver"){accVer.has(id)?accVer.delete(id):accVer.add(id);drawAcc();}
+  else if(act==="msg")copiar(mensajeAcceso(a.nombre,a.clave));
+  else if(act==="est"){const r=await SB.rpc("acceso_estado",{p_id:id,p_activo:!a.activo});if(r.error)toast(r.error.message);else{toast(a.activo?"Clave desactivada":"Clave activada");renderAcc();}}
+  else if(act==="del"){
+    if(accDel!==id){accDel=id;bt.textContent="¿Seguro?";setTimeout(()=>{if(accDel===id){accDel=null;drawAcc();}},4000);return;}
+    accDel=null;const r=await SB.rpc("acceso_eliminar",{p_id:id});if(r.error)toast(r.error.message);else{toast("Clave eliminada");renderAcc();}
+  }
+});
 async function boot(){
   renderAll();
   const cfg=window.SUPABASE_CONFIG;
   if(cfg&&cfg.url&&cfg.anonKey&&window.supabase&&window.makeSupabaseDb){
     let pw="";try{pw=localStorage.getItem("incosaf.clave")||"";}catch(e){}
     if(!(pw&&await claveOk(cfg,pw)))pw=await pedirClave(cfg);
-    iniciarSupabase(cfg,pw);
+    await iniciarSupabase(cfg,pw);
     return;
   }
   if(!window.claude||!window.claude.use){useLocal();return;}
@@ -801,9 +867,10 @@ document.querySelectorAll(".tabs button").forEach(b=>b.addEventListener("click",
 function setView(v){
   S.view=v;
   document.querySelectorAll(".tabs button").forEach(b=>b.setAttribute("aria-selected",b.dataset.view===v));
-  $("#v-dia").hidden=v!=="dia";$("#v-mes").hidden=v!=="mes";$("#v-anual").hidden=v!=="anual";$("#v-cursos").hidden=v!=="cursos";$("#v-general").hidden=v!=="general";$("#v-cal").hidden=v!=="cal";$("#v-aud").hidden=v!=="aud";
-  document.querySelector(".field.curso").hidden=v==="general"||v==="cal"||v==="aud";
+  $("#v-dia").hidden=v!=="dia";$("#v-mes").hidden=v!=="mes";$("#v-anual").hidden=v!=="anual";$("#v-cursos").hidden=v!=="cursos";$("#v-general").hidden=v!=="general";$("#v-cal").hidden=v!=="cal";$("#v-aud").hidden=v!=="aud";$("#v-acc").hidden=v!=="acc";
+  document.querySelector(".field.curso").hidden=v==="general"||v==="cal"||v==="aud"||v==="acc";
   if(v==="aud")renderAud(true);
+  if(v==="acc")renderAcc();
   if(v==="cal")renderCal();
   $("#fFecha").hidden=v!=="dia";$("#fMes").hidden=v!=="mes";
   if(v==="mes")renderMes();
@@ -1070,19 +1137,19 @@ let audRows=[],audSeq=0,audProf={};
 (function(){const h=ymd(today),d=new Date(today);d.setDate(d.getDate()-6);$("#audDesde").value=ymd(d);$("#audHasta").value=h;})();
 async function cargarAud(ini,fin){
   if(!db){const o=Local.read();return (o.audit||[]).filter(e=>{const f=ymd(new Date(e.ts));return f>=ini&&f<=fin;});}
-  const users=(await db.collection("auditoria").get()).docs.map(d=>d.id);
+  const users=S.isAdmin?(await db.collection("auditoria").get()).docs.map(d=>d.id):[];
   if(S.uid&&!users.includes(S.uid))users.push(S.uid);
   const out=[];
   for(const u of users){try{const q=await db.collection("auditoria/"+u+"/log").where("fecha",">=",ini).where("fecha","<=",fin).get();q.docs.forEach(d=>(d.data().entradas||[]).forEach(e=>out.push(Object.assign({uid:u},e))));}catch(e){}}
   return out;
 }
-async function perfiles(ids){audProf={};if(!S.user||!ids.length)return;try{audProf=await S.user.profiles(ids);}catch(e){}}
+async function perfiles(ids){audProf={};if(S.nombres){ids.forEach(i=>{audProf[i]={name:S.nombres[i]||"Clave eliminada"};});return;}if(!S.user||!ids.length)return;try{audProf=await S.user.profiles(ids);}catch(e){}}
 function nombreDe(id){if(id==="local")return "Este navegador";const p=audProf[id];return (p&&p.name)||"Usuario sin nombre visible";}
 async function renderAud(recargar){
   const seq=++audSeq;
   const n=$("#audNota");
   if(!db){n.hidden=false;n.className="notice warn";n.textContent="Modo sin conexión: el registro guarda solo los cambios hechos en este navegador y no identifica al usuario. Abra la plataforma desde claude.ai con su sesión iniciada.";}
-  else if(!S.isAdmin){n.hidden=false;n.className="notice";n.textContent="Usted ve solo los cambios que hizo con su cuenta. El registro completo de todos los usuarios lo ven el propietario y los editores de la plataforma.";}
+  else if(!S.isAdmin){n.hidden=false;n.className="notice";n.textContent="Usted ve solo los cambios que hizo con su clave. El registro completo lo ve el administrador.";}
   else n.hidden=true;
   let ini=$("#audDesde").value,fin=$("#audHasta").value;if(!ini||!fin){return;}if(fin<ini){const t=ini;ini=fin;fin=t;}
   if(recargar){
@@ -1432,8 +1499,8 @@ $("#delCurso").addEventListener("click",()=>{if(S.canWrite)$("#delConfirm").hidd
 $("#delNo").addEventListener("click",()=>$("#delConfirm").hidden=true);
 $("#delYes").addEventListener("click",async()=>{const id=S.rosterId;const c=S.cursos[id];try{await store.delCurso(id);S.rosterId=null;toast("Curso eliminado");audit("Curso","Eliminó el curso "+(c?.nombre||id)+" ("+((c?.alumnos||[]).length)+" alumnos en la nómina)",{curso:c?.nombre||id});}catch(e){toast("No se pudo eliminar el curso.");}});
 
-window.addEventListener("hashchange",()=>{const h=location.hash.slice(1);if(["dia","mes","anual","general","cal","aud","cursos"].includes(h))setView(h);});
-const h0=location.hash.slice(1);if(["mes","anual","general","cal","aud","cursos"].includes(h0))setView(h0);
+window.addEventListener("hashchange",()=>{const h=location.hash.slice(1);if(["dia","mes","anual","general","cal","aud","cursos","acc"].includes(h))setView(h);});
+const h0=location.hash.slice(1);if(["mes","anual","general","cal","aud","cursos"].concat(S.isAdmin?["acc"]:[]).includes(h0))setView(h0);
 boot();
 })();
 </script>
