@@ -12,6 +12,9 @@
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Source+Sans+3:wght@400;500;600;700&display=swap">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+<script src="config.js"></script>
+<script src="supabase-db.js"></script>
 <style>
 /* Layout: banda institucional azul con la insignia, barra de control fija (curso/fecha/vista) y una lista de nómina tipo libro de clases. */
 :root{
@@ -571,6 +574,15 @@ async function sembrarNomina(){
 }
 async function boot(){
   renderAll();
+  const cfg=window.SUPABASE_CONFIG;
+  if(cfg&&cfg.url&&cfg.anonKey&&window.supabase&&window.makeSupabaseDb){
+    let id="";try{id=localStorage.getItem("incosaf.dev")||"";if(!id){id="d"+Math.random().toString(36).slice(2,10);localStorage.setItem("incosaf.dev",id);}}catch(e){}
+    db=window.makeSupabaseDb(window.supabase.createClient(cfg.url,cfg.anonKey));
+    S.uid=id||"anon";S.isAdmin=true;
+    db.collection("calendario").onSnapshot(snap=>{const m={};snap.docs.forEach(x=>{const d=x.data();m[x.id]=Array.isArray(d.dias)?d.dias:[];});S.cal=m;refreshCal();},e=>console.warn(e));
+    db.collection("cursos").onSnapshot(snap=>{const m={};snap.docs.forEach(x=>{m[x.id]=x.data();});S.cursos=m;renderAll();if(!snap.docs.length)sembrarNomina();},e=>{console.warn(e);toast("No se pudo conectar con la base de datos.");});
+    return;
+  }
   if(!window.claude||!window.claude.use){useLocal();return;}
   let d=null,u=null;
   try{[d,u]=await Promise.all([window.claude.use("db"),window.claude.use("user")]);}catch(e){}
