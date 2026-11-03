@@ -536,6 +536,25 @@ textarea:focus{border-color:var(--navy);box-shadow:0 0 0 4px rgba(14,29,94,.12);
 input[type=time]{background:var(--surface);border:1px solid var(--line-2);border-radius:var(--r-sm);padding:7px 10px;min-height:38px}
 .spin.dark{display:inline-block;border-color:rgba(14,29,94,.2);border-top-color:var(--navy);margin-bottom:8px}
 @media (max-width:560px){.cf-row,.cf-si{grid-template-columns:minmax(0,1fr)}table.citab td.acc{white-space:normal}}
+
+/* Alertas críticas y recitación */
+.critbanner{border:1px solid #d9534a;border-left-width:6px;background:linear-gradient(180deg,#fff1ef,var(--bad-bg));color:#6e140d;border-radius:var(--r-md);padding:14px 16px;margin-bottom:14px;box-shadow:0 10px 24px -14px rgba(179,38,30,.55);animation:critIn .5s var(--ease) both}
+@keyframes critIn{from{opacity:0;transform:translateY(-8px)}to{opacity:1;transform:none}}
+.critbanner .cb-t{display:flex;gap:12px;align-items:flex-start}
+.critbanner .cb-i{flex:none;width:28px;height:28px;border-radius:50%;background:var(--bad);color:#fff;font:800 16px/28px var(--f-body);text-align:center;animation:pulseR 1.6s infinite}
+@keyframes pulseR{0%{box-shadow:0 0 0 0 rgba(179,38,30,.5)}70%{box-shadow:0 0 0 10px rgba(179,38,30,0)}100%{box-shadow:0 0 0 0 rgba(179,38,30,0)}}
+.critbanner b{letter-spacing:.03em}.critbanner .cb-t b{display:block;font-size:15px;color:var(--bad)}.critbanner .cb-t span{display:block;font-size:14px}
+.critbanner ul{margin:10px 0 10px 40px;padding:0;font-size:14px}.critbanner li{margin:2px 0}.critbanner small{color:#8a2a22}
+.critbanner .btn{margin-left:40px;background:#fff}
+.citaside.crit{border-color:#d9534a;box-shadow:0 10px 24px -14px rgba(179,38,30,.55)}
+.citaside.crit .ca-h{background:var(--bad-bg)}
+.citaside.crit .ca-dot{background:var(--bad);box-shadow:0 0 0 4px rgba(179,38,30,.2)}
+.ca-l li.crit b{color:var(--bad)}
+.ca-l small.cr{display:block;margin-top:2px;color:var(--bad);font-weight:800;letter-spacing:.03em}
+.pill.crit{background:var(--bad);color:#fff;letter-spacing:.03em;animation:pulseR 2s infinite}
+tr.critrow td{background:#fff4f2}
+tr.critrow td:first-child{box-shadow:inset 5px 0 0 var(--bad)}
+.cf-auto{margin:0 0 10px;padding:9px 12px;border-radius:var(--r-sm);background:var(--late-bg);color:var(--fg);font-size:14px}
 @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
 </style>
 
@@ -606,6 +625,7 @@ input[type=time]{background:var(--surface);border:1px solid var(--line-2);border
         <div class="stat s"><div class="k">Sin marcar</div><div class="v" id="sS">0</div></div>
         <div class="stat pct"><div class="k">% Asistencia</div><div class="v" id="sPct">—</div><div class="bar"><i id="sBar" style="width:0"></i></div></div>
       </div>
+      <div class="critbanner" id="critBanner" role="alert" hidden></div>
       <aside class="citaside" id="citAside" aria-live="polite">
         <div class="ca-h"><span class="ca-dot"></span><div><b>Alumnos con dos inasistencias seguidas</b><small>Para citar al apoderado</small></div></div>
         <div class="ca-b" id="citAsideBody"><p class="ca-e">Seleccione un curso.</p></div>
@@ -1127,19 +1147,24 @@ function episodiosDe(c,regs,ini,fin){
   });
   return out;
 }
-const CIT_CAMPOS=["id","curso","cursoNombre","alumnoId","alumno","rut","desde","hasta","fechas","dias","estado","fechaCita","horaCita","citadoPor","citadoEn","asistio","apoderado","motivo","fechaAsistio","obs","cerradoPor","cerradoEn"];
+const CIT_CAMPOS=["id","curso","cursoNombre","alumnoId","alumno","rut","desde","hasta","fechas","dias","estado","fechaCita","horaCita","citadoPor","citadoEn","asistio","apoderado","motivo","fechaAsistio","obs","cerradoPor","cerradoEn","nCita","historial"];
 const baseCit=it=>{const o={};CIT_CAMPOS.forEach(k=>{if(it[k]!==undefined)o[k]=it[k];});return o;};
 function unirCit(eps,docs,validos){
   const byId={};docs.forEach(d=>{if(!validos||validos.has(d.curso))byId[d.id]=d;});
   const out=[];const usados=new Set();
   eps.forEach(e=>{const id=citId(e);const d=byId[id];usados.add(id);out.push(Object.assign({},d||{},e,{id,estado:(d&&d.estado)||"pendiente"}));});
   Object.keys(byId).forEach(id=>{if(!usados.has(id))out.push(Object.assign({},byId[id]));});
-  out.sort((a,b)=>String(b.hasta).localeCompare(String(a.hasta))||String(a.alumno).localeCompare(String(b.alumno),"es"));
+  const crit=x=>x.estado!=="cerrada"&&x.dias>=3?1:0;
+  out.sort((a,b)=>crit(b)-crit(a)||String(b.hasta).localeCompare(String(a.hasta))||String(a.alumno).localeCompare(String(b.alumno),"es"));
   return out;
 }
+const ordC=n=>n+"ª";
+const ORD_PDF={1:"PRIMERA",2:"SEGUNDA",3:"TERCERA",4:"CUARTA",5:"QUINTA"};
+const critico=it=>it.estado!=="cerrada"&&it.dias>=3;
+function histCit(it){return (it.historial||[]).map(x=>ordC(x.n)+" citación "+fmtCL(x.fechaCita)+(x.horaCita?" "+x.horaCita:"")+" · no vino").join(" · ");}
 function estadoCit(it){
   if(it.estado==="cerrada")return it.asistio?{k:"ok",t:"Justificó",s:"Asistió el "+fmtCL(it.fechaAsistio)+(it.apoderado?" · "+it.apoderado:"")}:{k:"mute",t:"No asistió",s:it.obs||""};
-  if(it.estado==="citado")return {k:"late",t:"Citado",s:fmtCL(it.fechaCita)+(it.horaCita?" "+it.horaCita:"")+" · esperando asistencia"};
+  if(it.estado==="citado")return {k:"late",t:"Citado"+((it.nCita||1)>1?" · "+ordC(it.nCita)+" citación":""),s:fmtCL(it.fechaCita)+(it.horaCita?" "+it.horaCita:"")+" · esperando asistencia"};
   return {k:"bad",t:"Pendiente de citar",s:""};
 }
 function textoFechas(it){const f=it.fechas&&it.fechas.length?it.fechas:[it.desde,it.hasta];return f.length>3?fmtDiaCorto(f[0])+" al "+fmtDiaCorto(f[f.length-1]):f.map(fmtDiaCorto).join(", ");}
@@ -1191,7 +1216,7 @@ function renderCit(recargar){
       :it.estado==="citado"
         ?`<button class="btn small primary" data-a="abrir">Registrar resultado</button> <button class="btn small" data-a="pdf">PDF citación</button>`
         :`<button class="btn small primary" data-a="abrir">Citar apoderado</button>`;
-    const fila=`<tr data-id="${esc(it.id)}"><td class="lv"><b>${esc(it.alumno)}</b><br><small class="mut">${esc(fmtRut(it.rut))}</small></td><td>${esc(it.cursoNombre)}</td><td class="lv">${esc(textoFechas(it))}<br><small class="mut">${it.dias} día${it.dias>1?"s":""} seguidos</small></td><td class="lv"><span class="pill ${e.k}">${e.t}</span>${e.s?`<br><small class="mut">${esc(e.s)}</small>`:""}${it.estado==="cerrada"&&it.motivo?`<br><small class="mut">Motivo: ${esc(it.motivo)}</small>`:""}</td><td class="acc">${acc}</td></tr>`;
+    const fila=`<tr data-id="${esc(it.id)}"${critico(it)?' class="critrow"':""}><td class="lv"><b>${esc(it.alumno)}</b><br><small class="mut">${esc(fmtRut(it.rut))}</small></td><td>${esc(it.cursoNombre)}</td><td class="lv">${esc(textoFechas(it))}<br>${critico(it)?`<span class="pill crit">${it.dias>=4?"MUY ":""}CRÍTICO · ${it.dias} días seguidos</span>`:`<small class="mut">${it.dias} día${it.dias>1?"s":""} seguidos</small>`}</td><td class="lv"><span class="pill ${e.k}">${e.t}</span>${e.s?`<br><small class="mut">${esc(e.s)}</small>`:""}${(it.historial||[]).length?`<br><small class="mut">${esc(histCit(it))}</small>`:""}${it.estado==="cerrada"&&it.motivo?`<br><small class="mut">Motivo: ${esc(it.motivo)}</small>`:""}</td><td class="acc">${acc}</td></tr>`;
     return fila+(cit.open===it.id?formCit(it):"");
   }).join("")+"</tbody>";
 }
@@ -1205,8 +1230,15 @@ function formCit(it){
         <div class="field"><label for="cfFa">Fecha en que asistió</label><input type="date" id="cfFa" value="${ymd(today)}"></div>
         <div class="field wide"><label for="cfMot">Motivo de la justificación</label><textarea id="cfMot" rows="3" maxlength="600"></textarea></div>
       </div>
-      <div class="cf-no" hidden><div class="field wide"><label for="cfObs">Observación (opcional)</label><input type="text" id="cfObs" autocomplete="off" maxlength="200" placeholder="Ej: no respondió a la llamada"></div></div>
-      <div class="cf-b"><button class="btn small primary" data-a="guardar-res" disabled>Guardar y cerrar</button><button class="btn small gold" data-a="guardar-res-pdf" disabled>Guardar y descargar PDF</button><button class="btn small" data-a="cancelar">Cancelar</button></div></div></td></tr>`;
+      <div class="cf-no" hidden>
+        <p class="cf-auto"><b>Nueva citación automática.</b> Como el apoderado no vino, se cita nuevamente (${ordC((it.nCita||1)+1)} citación). Ajuste la fecha si es necesario.</p>
+        <div class="cf-row"><div class="field"><label for="cfF2">Fecha de la nueva citación</label><input type="date" id="cfF2" value="${moverLectivo((it.fechaCita&&it.fechaCita>ymd(today))?it.fechaCita:ymd(today),1)}"></div>
+        <div class="field"><label for="cfH2">Hora</label><input type="time" id="cfH2" value="${esc(it.horaCita||"08:30")}"></div>
+        <div class="field wide"><label for="cfObs">Observación (opcional)</label><input type="text" id="cfObs" autocomplete="off" maxlength="200" placeholder="Ej: no respondió a la llamada"></div></div>
+      </div>
+      <div class="cf-b b-si" hidden><button class="btn small primary" data-a="guardar-res">Guardar y cerrar</button><button class="btn small gold" data-a="guardar-res-pdf">Guardar y descargar PDF</button><button class="btn small" data-a="cancelar">Cancelar</button></div>
+      <div class="cf-b b-no" hidden><button class="btn small primary" data-a="no-recitar">Registrar y citar nuevamente</button><button class="btn small gold" data-a="no-recitar-pdf">Citar y descargar PDF</button><button class="btn small" data-a="no-cerrar">Cerrar sin nueva citación</button><button class="btn small" data-a="cancelar">Cancelar</button></div>
+      </div></td></tr>`;
   }
   const d0=proxLectivo(ymd(today),1);
   return `<tr class="citform" data-id="${esc(it.id)}"><td colspan="5"><div class="cf"><div class="cf-row">
@@ -1235,25 +1267,31 @@ $("#citTabla").addEventListener("click",async ev=>{
   else if(a==="reabrir"){await guardarCit(it,{estado:"citado",asistio:null,apoderado:"",motivo:"",fechaAsistio:"",obs:"",cerradoPor:"",cerradoEn:""},"Reabrió la citación",false);}
   else if(a==="guardar-cita"||a==="guardar-cita-pdf"){
     const f=$("#cfF").value,hh=$("#cfH").value;if(!f){$("#cfF").focus();return toast("Indique la fecha de citación.");}
-    await guardarCit(it,{estado:"citado",fechaCita:f,horaCita:hh,citadoPor:quien,citadoEn:new Date().toISOString()},"Citó al apoderado para el "+fmtCL(f)+(hh?" "+hh:""),a==="guardar-cita-pdf");
+    await guardarCit(it,{estado:"citado",nCita:it.nCita||1,fechaCita:f,horaCita:hh,citadoPor:quien,citadoEn:new Date().toISOString()},"Citó al apoderado para el "+fmtCL(f)+(hh?" "+hh:""),a==="guardar-cita-pdf");
   }
   else if(a==="guardar-res"||a==="guardar-res-pdf"){
-    const si=(document.querySelector('input[name="cfAs"]:checked')||{}).value;if(!si)return;
-    if(si==="si"){
-      const nom=$("#cfNom").value.trim(),mot=$("#cfMot").value.trim();
-      if(!nom){$("#cfNom").focus();return toast("Escriba el nombre del apoderado.");}
-      if(!mot){$("#cfMot").focus();return toast("Escriba el motivo de la justificación.");}
-      await guardarCit(it,{estado:"cerrada",asistio:true,apoderado:nom,motivo:mot,fechaAsistio:$("#cfFa").value||hoy,obs:"",cerradoPor:quien,cerradoEn:new Date().toISOString()},"Apoderado "+nom+" justificó la inasistencia",a==="guardar-res-pdf");
-    }else{
-      await guardarCit(it,{estado:"cerrada",asistio:false,apoderado:"",motivo:"",fechaAsistio:"",obs:$("#cfObs").value.trim(),cerradoPor:quien,cerradoEn:new Date().toISOString()},"Cerró la citación: el apoderado no asistió",false);
-    }
+    const nom=$("#cfNom").value.trim(),mot=$("#cfMot").value.trim();
+    if(!nom){$("#cfNom").focus();return toast("Escriba el nombre del apoderado.");}
+    if(!mot){$("#cfMot").focus();return toast("Escriba el motivo de la justificación.");}
+    await guardarCit(it,{estado:"cerrada",asistio:true,apoderado:nom,motivo:mot,fechaAsistio:$("#cfFa").value||hoy,obs:"",cerradoPor:quien,cerradoEn:new Date().toISOString()},"Apoderado "+nom+" justificó la inasistencia",a==="guardar-res-pdf");
+  }
+  else if(a==="no-recitar"||a==="no-recitar-pdf"){
+    const f=$("#cfF2").value,hh=$("#cfH2").value;if(!f){$("#cfF2").focus();return toast("Indique la fecha de la nueva citación.");}
+    const n=it.nCita||1;
+    const hist=(it.historial||[]).concat([{n,fechaCita:it.fechaCita||"",horaCita:it.horaCita||"",resultado:"No vino",obs:$("#cfObs").value.trim(),por:quien,ts:new Date().toISOString()}]);
+    await guardarCit(it,{estado:"citado",nCita:n+1,historial:hist,fechaCita:f,horaCita:hh,citadoPor:quien,citadoEn:new Date().toISOString(),asistio:null,obs:""},"El apoderado no vino a la "+ordC(n)+" citación; se citó nuevamente ("+ordC(n+1)+") para el "+fmtCL(f)+(hh?" "+hh:""),a==="no-recitar-pdf");
+  }
+  else if(a==="no-cerrar"){
+    const n=it.nCita||1;
+    const hist=(it.historial||[]).concat([{n,fechaCita:it.fechaCita||"",horaCita:it.horaCita||"",resultado:"No vino",obs:$("#cfObs").value.trim(),por:quien,ts:new Date().toISOString()}]);
+    await guardarCit(it,{estado:"cerrada",asistio:false,historial:hist,apoderado:"",motivo:"",fechaAsistio:"",obs:$("#cfObs").value.trim(),cerradoPor:quien,cerradoEn:new Date().toISOString()},"Cerró la citación: el apoderado no asistió",false);
   }
 });
 $("#citTabla").addEventListener("change",ev=>{
   if(ev.target.name!=="cfAs")return;
   const f=ev.target.closest(".cf"),si=ev.target.value==="si";
   f.querySelector(".cf-si").hidden=!si;f.querySelector(".cf-no").hidden=si;
-  f.querySelectorAll('[data-a^="guardar-res"]').forEach(b=>{b.disabled=false;if(b.dataset.a==="guardar-res-pdf")b.hidden=!si;});
+  f.querySelector(".b-si").hidden=!si;f.querySelector(".b-no").hidden=si;
 });
 document.querySelectorAll("#citSeg button").forEach(b=>b.addEventListener("click",()=>{cit.ver=b.dataset.v;cit.open=null;renderCit(false);}));
 $("#citCurso").addEventListener("change",e=>{cit.curso=e.target.value;cit.open=null;renderCit(false);});
@@ -1267,7 +1305,7 @@ function scheduleAside(){clearTimeout(asideT);asideT=setTimeout(renderAside,350)
 async function renderAside(){
   const box=$("#citAsideBody");if(!box)return;
   const c=curso();
-  if(!c){box.innerHTML='<p class="ca-e">Seleccione un curso.</p>';$("#citAside").classList.remove("hay");return;}
+  if(!c){box.innerHTML='<p class="ca-e">Seleccione un curso.</p>';$("#citAside").classList.remove("hay","crit");$("#critBanner").hidden=true;return;}
   if(!db&&S.conectando){box.innerHTML='<p class="ca-e">Conectando…</p>';return;}
   const seq=++asideSeq;
   const hoy=ymd(today),fin=S.fecha>hoy?hoy:S.fecha,ini=haceDias(fin,45);
@@ -1280,11 +1318,21 @@ async function renderAside(){
   let regs=ch.regs.filter(r=>r.fecha!==S.fecha);
   if(S.fecha<=fin&&esLectivo(S.fecha))regs=regs.concat([{fecha:S.fecha,marcas:S.marcas||{}}]);
   const hechos=new Set(ch.docs.map(d=>d.id));
-  const eps=episodiosDe(c,regs,ini,fin).filter(e=>!hechos.has(citId(e))).sort((a,b)=>String(b.hasta).localeCompare(String(a.hasta)));
+  const all=episodiosDe(c,regs,ini,fin);
+  const eps=all.filter(e=>!hechos.has(citId(e))).sort((a,b)=>(b.dias>=3)-(a.dias>=3)||String(b.hasta).localeCompare(String(a.hasta)));
+  const ref=esLectivo(fin)?fin:moverLectivo(fin,-1);
+  const crit=all.filter(e=>e.dias>=3&&e.hasta===ref).sort((a,b)=>b.dias-a.dias);
+  const bn=$("#critBanner");
+  if(crit.length){
+    bn.hidden=false;
+    bn.innerHTML='<div class="cb-t"><span class="cb-i">!</span><div><b>SITUACIÓN CRÍTICA</b><span>'+(crit.length>1?crit.length+" alumnos llevan":"1 alumno lleva")+' 3 o más días seguidos sin asistir. Requiere citación urgente del apoderado.</span></div></div><ul>'+crit.map(e=>`<li><b>${esc(e.alumno)}</b> lleva <b>${e.dias} días seguidos</b> sin asistir <small>(${esc(textoFechas(e))})</small></li>`).join("")+'</ul><button class="btn small danger" data-ir="curso" type="button">Ver citaciones</button>';
+  }else{bn.hidden=true;bn.innerHTML="";}
   $("#citAside").classList.toggle("hay",eps.length>0);
+  $("#citAside").classList.toggle("crit",eps.some(e=>e.dias>=3));
   if(!eps.length){box.innerHTML='<p class="ca-e">Ningún alumno de este curso tiene dos inasistencias seguidas sin citar.</p><button class="linkbtn" data-ir="todas" type="button">Ver todas las citaciones</button>';return;}
-  box.innerHTML='<ul class="ca-l">'+eps.slice(0,6).map(e=>`<li><div><b>${esc(e.alumno)}</b><small>${esc(textoFechas(e))} · ${e.dias} días</small></div><button class="btn small" data-citar="${esc(citId(e))}" type="button">Citar</button></li>`).join("")+"</ul>"+(eps.length>6?`<p class="ca-e">y ${eps.length-6} más…</p>`:"")+'<button class="linkbtn" data-ir="curso" type="button">Ver todas las citaciones</button>';
+  box.innerHTML='<ul class="ca-l">'+eps.slice(0,6).map(e=>`<li${e.dias>=3?' class="crit"':""}><div><b>${esc(e.alumno)}</b><small>${esc(textoFechas(e))} · ${e.dias} días</small>${e.dias>=3?`<small class="cr">${e.dias>=4?"MUY ":""}CRÍTICO · ${e.dias} días seguidos</small>`:""}</div><button class="btn small" data-citar="${esc(citId(e))}" type="button">Citar</button></li>`).join("")+"</ul>"+(eps.length>6?`<p class="ca-e">y ${eps.length-6} más…</p>`:"")+'<button class="linkbtn" data-ir="curso" type="button">Ver todas las citaciones</button>';
 }
+document.addEventListener("click",ev=>{const b=ev.target.closest("#critBanner [data-ir]");if(!b)return;const c=curso();cit.curso=c?c.id:"";cit.ver="pend";cit.q="";$("#citQ").value="";setView("cit");});
 $("#citAside").addEventListener("click",ev=>{
   const b=ev.target.closest("button");if(!b)return;const c=curso();
   if(b.dataset.citar){cit.curso=c?c.id:"";cit.ver="pend";cit.q="";$("#citQ").value="";cit.pendOpen=b.dataset.citar;cit.open=null;setView("cit");}
@@ -1306,7 +1354,8 @@ function pdfCit(it){
   d.text("San Fernando · Inspectoría General",tx,y+22);d.text("Avda. Manso de Velasco 389, San Fernando",tx,y+27);
   y+=36;d.setDrawColor(216,174,22);d.setLineWidth(0.9);d.line(M,y,W-M,y);
   y+=14;d.setTextColor(17,22,43);d.setFont("helvetica","bold");d.setFontSize(15);
-  d.text(justif?"CONSTANCIA DE JUSTIFICACIÓN DE INASISTENCIA":"CITACIÓN DE APODERADO",W/2,y,{align:"center"});
+  const nC=it.nCita||1;
+  d.text(justif?"CONSTANCIA DE JUSTIFICACIÓN DE INASISTENCIA":(nC>1?(ORD_PDF[nC]||nC+"ª")+" CITACIÓN DE APODERADO":"CITACIÓN DE APODERADO"),W/2,y,{align:"center"});
   y+=7;d.setFont("helvetica","normal");d.setFontSize(10);d.setTextColor(90,96,130);
   d.text("San Fernando, "+fmtCL(ymd(today)),W/2,y,{align:"center"});
   y+=12;
@@ -1314,11 +1363,12 @@ function pdfCit(it){
   fila("Estudiante",it.alumno);fila("RUT",fmtRut(it.rut));fila("Curso",it.cursoNombre);
   const fechas=(it.fechas&&it.fechas.length?it.fechas:[it.desde,it.hasta]).map(fmtDia).join(", ");
   fila("Inasistencias",fechas+" ("+it.dias+" día"+(it.dias>1?"s":"")+" seguidos)");
-  if(!justif&&it.fechaCita)fila("Citación",fmtDia(it.fechaCita)+(it.horaCita?", "+it.horaCita+" horas":""));
+  if(!justif&&it.dias>=3)fila("Observación","El/la estudiante acumula "+it.dias+" días seguidos de inasistencia.");
+  if(!justif&&it.fechaCita)fila(nC>1?ordC(nC)+" citación":"Citación",fmtDia(it.fechaCita)+(it.horaCita?", "+it.horaCita+" horas":""));
   y+=4;d.setFontSize(11);d.setTextColor(17,22,43);d.setFont("helvetica","normal");
   const cuerpo=justif
     ?"Se deja constancia de que el día "+fmtDia(it.fechaAsistio)+" se presentó en Inspectoría General "+(it.apoderado||"el apoderado")+", en calidad de apoderado(a) del/la estudiante "+it.alumno+", del curso "+it.cursoNombre+", a justificar las inasistencias registradas en los días indicados."
-    :"Se cita a usted, en calidad de apoderado(a) del/la estudiante "+it.alumno+", del curso "+it.cursoNombre+", a presentarse en Inspectoría General"+(it.fechaCita?" el día "+fmtDia(it.fechaCita)+(it.horaCita?" a las "+it.horaCita+" horas":""):"")+", con el fin de justificar las inasistencias registradas en los días indicados.";
+    :"Se cita a usted, en calidad de apoderado(a) del/la estudiante "+it.alumno+", del curso "+it.cursoNombre+", a presentarse en Inspectoría General"+(it.fechaCita?" el día "+fmtDia(it.fechaCita)+(it.horaCita?" a las "+it.horaCita+" horas":""):"")+", con el fin de justificar las inasistencias registradas en los días indicados."+(nC>1&&(it.historial||[]).length?" Se le cita nuevamente, ya que no asistió a la citación anterior del "+fmtDia((it.historial[it.historial.length-1]||{}).fechaCita||it.desde)+".":"");
   const L1=d.splitTextToSize(cuerpo,W-2*M);d.text(L1,M,y,{lineHeightFactor:1.5});y+=L1.length*6.6+4;
   if(justif){
     d.setFont("helvetica","bold");d.setTextColor(14,29,94);d.text("Motivo de la justificación",M,y);y+=6;
