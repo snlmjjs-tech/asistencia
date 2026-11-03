@@ -1124,6 +1124,8 @@ function diasHabiles(ini,fin){let n=0;const d=parseYmd(ini),e=parseYmd(fin);whil
 function moverLectivo(f,n){const d=parseYmd(f);for(let i=0;i<400;i++){d.setDate(d.getDate()+n);if(esLectivo(ymd(d)))break;}return ymd(d);}
 
 /* ---------- Citaciones: alumnos con dos o más inasistencias seguidas ---------- */
+/* Las citaciones rigen desde esta fecha: lo anterior (pruebas) no se considera. */
+const CITA_DESDE="2026-11-04";
 var cit={ver:"pend",curso:"",q:"",desde:"",items:[],open:null,cargando:false,error:null,seq:0,pendOpen:null};
 const DIAS_C=["dom","lun","mar","mié","jue","vie","sáb"];
 const haceDias=(f,n)=>{const d=parseYmd(f);d.setDate(d.getDate()-n);return ymd(d);};
@@ -1134,7 +1136,7 @@ const citId=e=>e.curso+"__"+e.alumnoId+"__"+e.desde;
 /* regs: [{fecha,marcas}] de un curso. Un día sin registro corta la secuencia (no se puede confirmar la falta). */
 function episodiosDe(c,regs,ini,fin){
   const por={};regs.forEach(r=>{por[r.fecha]=normM(r.marcas||{});});
-  const dias=diasLect(ini,fin);const out=[];
+  const dias=diasLect(ini>CITA_DESDE?ini:CITA_DESDE,fin);const out=[];
   alumnosOrd(c).forEach(a=>{
     let run=[];
     const flush=()=>{if(run.length>=2)out.push({curso:c.id,cursoNombre:c.nombre,alumnoId:a.id,alumno:a.nombre,rut:a.rut||"",desde:run[0],hasta:run[run.length-1],fechas:run.slice(),dias:run.length});run=[];};
@@ -1150,7 +1152,7 @@ function episodiosDe(c,regs,ini,fin){
 const CIT_CAMPOS=["id","curso","cursoNombre","alumnoId","alumno","rut","desde","hasta","fechas","dias","estado","fechaCita","horaCita","citadoPor","citadoEn","asistio","apoderado","motivo","fechaAsistio","obs","cerradoPor","cerradoEn","nCita","historial"];
 const baseCit=it=>{const o={};CIT_CAMPOS.forEach(k=>{if(it[k]!==undefined)o[k]=it[k];});return o;};
 function unirCit(eps,docs,validos){
-  const byId={};docs.forEach(d=>{if(!validos||validos.has(d.curso))byId[d.id]=d;});
+  const byId={};docs.forEach(d=>{if((d.desde||"")>=CITA_DESDE&&(!validos||validos.has(d.curso)))byId[d.id]=d;});
   const out=[];const usados=new Set();
   eps.forEach(e=>{const id=citId(e);const d=byId[id];usados.add(id);out.push(Object.assign({},d||{},e,{id,estado:(d&&d.estado)||"pendiente"}));});
   Object.keys(byId).forEach(id=>{if(!usados.has(id))out.push(Object.assign({},byId[id]));});
