@@ -32,12 +32,22 @@ window.makeSupabaseDb = function (sb) {
 
   function collRef(coll, filters = [], lim = 1000) {
     const fetchAll = async () => {
-      let q = sb.from(T).select("id,data").eq("coll", coll);
-      for (const [f, op, v] of filters) {
-        const col = "data->>" + f;
-        q = op === "==" ? q.eq(col, v) : op === ">=" ? q.gte(col, v) : op === "<=" ? q.lte(col, v) : op === ">" ? q.gt(col, v) : q.lt(col, v);
+      const build = () => {
+        let q = sb.from(T).select("id,data").eq("coll", coll).order("id");
+        for (const [f, op, v] of filters) {
+          const col = "data->>" + f;
+          q = op === "==" ? q.eq(col, v) : op === ">=" ? q.gte(col, v) : op === "<=" ? q.lte(col, v) : op === ">" ? q.gt(col, v) : q.lt(col, v);
+        }
+        return q;
+      };
+      const rows = [];
+      for (let from = 0; from < lim; from += 1000) {
+        const to = Math.min(from + 999, lim - 1);
+        const page = fail(await track(build().range(from, to))).data || [];
+        rows.push(...page);
+        if (page.length < to - from + 1) break;
       }
-      return qsnap(fail(await track(q.limit(lim))).data || []);
+      return qsnap(rows);
     };
     return {
       doc: id => docRef(coll, id),

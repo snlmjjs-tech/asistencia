@@ -12,6 +12,7 @@
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700;800&family=Public+Sans:wght@400;500;600;700&display=swap">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.57.4/dist/umd/supabase.min.js"></script>
 <script src="config.js"></script>
 <script src="supabase-db.js"></script>
@@ -489,6 +490,52 @@ footer::before{content:"";display:block;width:56px;height:3px;margin:0 auto 14px
   .band .ses{flex:1 1 100%;flex-direction:row;align-items:center;justify-content:space-between;margin-left:0;padding-top:10px;border-top:1px solid rgba(255,255,255,.14)}
   .band .ses #sesNom{max-width:60%}
 }
+
+/* Citaciones */
+#v-dia{display:grid;grid-template-columns:minmax(0,1fr);gap:0}
+@media (min-width:1100px){
+  #v-dia{grid-template-columns:minmax(0,1fr) 300px;column-gap:22px}
+  #v-dia>*{grid-column:1}
+  #v-dia>.citaside{grid-column:2;grid-row:2 / span 4;align-self:start;position:sticky;top:150px;margin-bottom:0}
+}
+.wrap{max-width:1200px}
+.citaside{border:1px solid var(--line);border-radius:var(--r-lg);background:var(--surface);box-shadow:var(--sh-1);margin-bottom:14px;overflow:hidden}
+.citaside.hay{border-color:#e9c46a;box-shadow:0 10px 24px -14px rgba(143,91,0,.45)}
+.ca-h{display:flex;gap:10px;align-items:flex-start;padding:12px 14px;background:var(--surface-2);border-bottom:1px solid var(--line)}
+.citaside.hay .ca-h{background:var(--late-bg)}
+.ca-h b{display:block;font-size:14px;line-height:1.25}.ca-h small{color:var(--muted);font-size:12px}
+.ca-dot{flex:none;width:10px;height:10px;border-radius:50%;background:var(--line-2);margin-top:5px}
+.citaside.hay .ca-dot{background:var(--late);box-shadow:0 0 0 4px rgba(143,91,0,.18);animation:pulse 1.8s infinite}
+@keyframes pulse{50%{box-shadow:0 0 0 7px rgba(143,91,0,0)}}
+.ca-b{padding:10px 14px 12px}
+.ca-e{margin:4px 0 8px;color:var(--muted);font-size:13px}
+.ca-l{list-style:none;margin:0 0 8px;padding:0;display:flex;flex-direction:column}
+.ca-l li{display:flex;gap:8px;align-items:center;justify-content:space-between;padding:8px 0;border-top:1px solid var(--line)}
+.ca-l li:first-child{border-top:0}
+.ca-l b{display:block;font-size:13.5px;line-height:1.25}.ca-l small{color:var(--muted);font-size:12px}
+.linkbtn{border:0;background:none;color:var(--just);font-weight:600;cursor:pointer;padding:2px 0;font-size:13px}
+.linkbtn:hover{text-decoration:underline}
+.seg button .cn{display:inline-block;min-width:20px;margin-left:6px;padding:0 6px;border-radius:999px;background:var(--surface-2);color:var(--fg);font-size:12px;line-height:19px;text-align:center}
+.seg button[aria-pressed=true] .cn{background:rgba(0,0,0,.14)}
+.seg{flex-wrap:wrap;border-radius:var(--r-md)}
+.seg button{border-radius:0}
+table.citab td,table.citab th{text-align:left;white-space:normal;vertical-align:top}
+table.citab td.acc{white-space:nowrap;text-align:right}
+table.citab small.mut{color:var(--muted)}
+.pill.late{background:var(--late-bg);color:var(--late)}.pill.bad{background:var(--bad-bg);color:var(--bad)}.pill.mute{background:var(--surface-2);color:var(--muted)}
+tr.citform td{background:var(--surface-2);padding:14px 16px}
+.cf{display:flex;flex-direction:column;gap:12px;max-width:760px}
+.cf-row,.cf-si{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.cf-si .wide,.cf-no .wide{grid-column:1 / -1}
+.cf-q{display:flex;flex-wrap:wrap;gap:8px 18px;align-items:center}
+.rad{display:inline-flex;align-items:center;gap:6px;font-weight:600;cursor:pointer}
+.rad input{accent-color:var(--navy);width:18px;height:18px}
+.cf-b{display:flex;flex-wrap:wrap;gap:8px}
+textarea{width:100%;font:inherit;color:inherit;background:var(--surface);border:1px solid var(--line-2);border-radius:var(--r-sm);padding:8px 10px;resize:vertical;transition:border-color .2s,box-shadow .2s}
+textarea:focus{border-color:var(--navy);box-shadow:0 0 0 4px rgba(14,29,94,.12);outline:0}
+input[type=time]{background:var(--surface);border:1px solid var(--line-2);border-radius:var(--r-sm);padding:7px 10px;min-height:38px}
+.spin.dark{display:inline-block;border-color:rgba(14,29,94,.2);border-top-color:var(--navy);margin-bottom:8px}
+@media (max-width:560px){.cf-row,.cf-si{grid-template-columns:minmax(0,1fr)}table.citab td.acc{white-space:normal}}
 @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
 </style>
 
@@ -532,6 +579,7 @@ footer::before{content:"";display:block;width:56px;height:3px;margin:0 auto 14px
       <button role="tab" id="tab-mes" aria-selected="false" data-view="mes">Resumen mensual</button>
       <button role="tab" id="tab-anual" aria-selected="false" data-view="anual">Resumen anual</button>
       <button role="tab" id="tab-general" aria-selected="false" data-view="general">Informe general</button>
+      <button role="tab" id="tab-cit" aria-selected="false" data-view="cit">Citaciones</button>
       <button role="tab" id="tab-cal" aria-selected="false" data-view="cal">Días sin clases</button>
       <button role="tab" id="tab-aud" aria-selected="false" data-view="aud">Auditoría</button>
       <button role="tab" id="tab-cursos" aria-selected="false" data-view="cursos">Cursos y nóminas</button>
@@ -558,6 +606,10 @@ footer::before{content:"";display:block;width:56px;height:3px;margin:0 auto 14px
         <div class="stat s"><div class="k">Sin marcar</div><div class="v" id="sS">0</div></div>
         <div class="stat pct"><div class="k">% Asistencia</div><div class="v" id="sPct">—</div><div class="bar"><i id="sBar" style="width:0"></i></div></div>
       </div>
+      <aside class="citaside" id="citAside" aria-live="polite">
+        <div class="ca-h"><span class="ca-dot"></span><div><b>Alumnos con dos inasistencias seguidas</b><small>Para citar al apoderado</small></div></div>
+        <div class="ca-b" id="citAsideBody"><p class="ca-e">Seleccione un curso.</p></div>
+      </aside>
       <div class="actions">
         <button class="btn" id="allP">Volver a todos presentes</button>
         <span class="legend">Todos los alumnos quedan <b>Presentes</b> por defecto. Marque <b>Ausente</b> solo a quienes faltaron.</span>
@@ -641,6 +693,28 @@ footer::before{content:"";display:block;width:56px;height:3px;margin:0 auto 14px
       </div>
     </section>
 
+    <!-- CITACIONES -->
+    <section class="view" id="v-cit" hidden>
+      <div class="dayhead"><h2>Citaciones de apoderados</h2><span class="date">Alumnos con dos o más inasistencias seguidas</span></div>
+      <div class="gctl">
+        <div class="seg" id="citSeg" role="group" aria-label="Estado de la citación">
+          <button type="button" data-v="pend" aria-pressed="true">Pendientes de citar <b class="cn" id="cnPend">0</b></button>
+          <button type="button" data-v="citado" aria-pressed="false">Citados (esperando asistencia) <b class="cn" id="cnCitado">0</b></button>
+          <button type="button" data-v="cerrada" aria-pressed="false">Cerradas <b class="cn" id="cnCerrada">0</b></button>
+          <button type="button" data-v="todas" aria-pressed="false">Todas <b class="cn" id="cnTodas">0</b></button>
+        </div>
+      </div>
+      <div class="gctl">
+        <div class="field"><label for="citCurso">Curso</label><select id="citCurso"><option value="">Todos los cursos</option></select></div>
+        <div class="field"><label for="citDesde">Revisar desde</label><input type="date" id="citDesde"></div>
+        <div class="field" style="flex:1;min-width:160px"><label for="citQ">Buscar alumno</label><input type="text" id="citQ" placeholder="Nombre, RUT o curso" autocomplete="off"></div>
+        <button class="btn small" id="citLoad" type="button">Actualizar</button>
+      </div>
+      <div id="citNota" class="notice" hidden></div>
+      <div class="scroll"><table class="grid citab" id="citTabla"></table></div>
+      <p class="legend" style="margin:10px 0 0">Una citación se genera cuando un alumno falta dos o más días de clases seguidos. Los fines de semana y los días sin clases no cortan la secuencia.</p>
+    </section>
+
     <!-- AUDITORIA -->
     <section class="view" id="v-aud" hidden>
       <div class="dayhead"><h2>Registro de auditoría</h2><span class="date">Todos los cambios con el usuario que los hizo</span></div>
@@ -649,7 +723,7 @@ footer::before{content:"";display:block;width:56px;height:3px;margin:0 auto 14px
         <div class="field"><label for="audDesde">Desde</label><input type="date" id="audDesde"></div>
         <div class="field"><label for="audHasta">Hasta</label><input type="date" id="audHasta"></div>
         <div class="field"><label for="audUser">Usuario</label><select id="audUser"><option value="">Todos</option></select></div>
-        <div class="field"><label for="audTipo">Acción</label><select id="audTipo"><option value="">Todas</option><option>Asistencia</option><option>Nómina</option><option>Ingreso de alumno</option><option>Baja de alumno</option><option>Reintegro</option><option>Cambio de curso</option><option>Curso</option><option>Calendario</option></select></div>
+        <div class="field"><label for="audTipo">Acción</label><select id="audTipo"><option value="">Todas</option><option>Asistencia</option><option>Nómina</option><option>Citación</option><option>Ingreso de alumno</option><option>Baja de alumno</option><option>Reintegro</option><option>Cambio de curso</option><option>Curso</option><option>Calendario</option></select></div>
         <div class="field" style="flex:1;min-width:160px"><label for="audQ">Buscar curso o alumno</label><input type="text" id="audQ" autocomplete="off"></div>
         <button class="btn small" id="audLoad">Actualizar</button>
         <button class="btn small gold" id="audExp">Exportar a Excel</button>
@@ -794,6 +868,15 @@ const store={
     if(db){unsubDay=db.collection("asistencia").doc(cursoId+"__"+fecha).onSnapshot(s=>cb(s.exists?(s.data().marcas||{}):{}, s.metadata.hasPendingWrites, s.metadata.fromCache),e=>console.warn(e));}
     else{const o=Local.read();const d=o.asis[cursoId+"__"+fecha];cb(d?d.marcas:{});}
   },
+  async saveCit(c){ if(db){await db.collection("citaciones").doc(c.id).set(c);} else {const o=Local.read();o.cit=o.cit||{};o.cit[c.id]=c;Local.write(o);} },
+  async listCit(cursoId){
+    if(db){let q=db.collection("citaciones");if(cursoId)q=q.where("curso","==",cursoId);return (await q.get()).docs.map(d=>d.data());}
+    const o=Local.read();return Object.values(o.cit||{}).filter(c=>!cursoId||c.curso===cursoId);
+  },
+  async todoRango(ini,fin){
+    if(db){const q=await db.collection("asistencia").where("fecha",">=",ini).where("fecha","<=",fin).limit(8000).get();return q.docs.map(d=>d.data());}
+    const o=Local.read();return Object.values(o.asis).filter(d=>d.fecha>=ini&&d.fecha<=fin);
+  },
   async rango(cursoId,ini,fin){
     if(db){const q=await db.collection("asistencia").where("curso","==",cursoId).where("fecha",">=",ini).where("fecha","<=",fin).limit(1000).get();return q.docs.map(d=>d.data());}
     const o=Local.read();return Object.values(o.asis).filter(d=>d.curso===cursoId&&d.fecha>=ini&&d.fecha<=fin);
@@ -872,7 +955,7 @@ async function iniciarSupabase(cfg,pw){
   }
   db=window.makeSupabaseDb(SB);
   S.conectando=false;if(!(me&&me.rol==="lectura"))S.canWrite=true;
-  renderAll();if(S.view==="aud")renderAud(true);
+  renderAll();if(S.view==="aud")renderAud(true);if(S.view==="cit")renderCit(true);
   db.collection("calendario").onSnapshot(snap=>{const m={};snap.docs.forEach(x=>{const d=x.data();m[x.id]=Array.isArray(d.dias)?d.dias:[];});S.cal=m;refreshCal();},e=>console.warn(e));
   db.collection("cursos").onSnapshot(snap=>{const m={};snap.docs.forEach(x=>{m[x.id]=x.data();});S.cursos=m;renderAll();sembrarNomina();},e=>{console.warn(e);avisoDb(e);});
 }
@@ -1020,6 +1103,241 @@ const esLectivo=f=>!sinClases(f);
 function diasHabiles(ini,fin){let n=0;const d=parseYmd(ini),e=parseYmd(fin);while(d<=e){if(esLectivo(ymd(d)))n++;d.setDate(d.getDate()+1);}return n;}
 function moverLectivo(f,n){const d=parseYmd(f);for(let i=0;i<400;i++){d.setDate(d.getDate()+n);if(esLectivo(ymd(d)))break;}return ymd(d);}
 
+/* ---------- Citaciones: alumnos con dos o más inasistencias seguidas ---------- */
+var cit={ver:"pend",curso:"",q:"",desde:"",items:[],open:null,cargando:false,error:null,seq:0,pendOpen:null};
+const DIAS_C=["dom","lun","mar","mié","jue","vie","sáb"];
+const haceDias=(f,n)=>{const d=parseYmd(f);d.setDate(d.getDate()-n);return ymd(d);};
+const fmtDia=f=>DIAS_C[parseYmd(f).getDay()]+" "+fmtCL(f);
+const fmtDiaCorto=f=>{const d=parseYmd(f);return DIAS_C[d.getDay()]+" "+d.getDate()+" "+MESES[d.getMonth()].slice(0,3);};
+function diasLect(ini,fin){const out=[];const d=parseYmd(ini),e=parseYmd(fin);while(d<=e){const f=ymd(d);if(esLectivo(f))out.push(f);d.setDate(d.getDate()+1);}return out;}
+const citId=e=>e.curso+"__"+e.alumnoId+"__"+e.desde;
+/* regs: [{fecha,marcas}] de un curso. Un día sin registro corta la secuencia (no se puede confirmar la falta). */
+function episodiosDe(c,regs,ini,fin){
+  const por={};regs.forEach(r=>{por[r.fecha]=normM(r.marcas||{});});
+  const dias=diasLect(ini,fin);const out=[];
+  alumnosOrd(c).forEach(a=>{
+    let run=[];
+    const flush=()=>{if(run.length>=2)out.push({curso:c.id,cursoNombre:c.nombre,alumnoId:a.id,alumno:a.nombre,rut:a.rut||"",desde:run[0],hasta:run[run.length-1],fechas:run.slice(),dias:run.length});run=[];};
+    for(const f of dias){
+      const m=por[f];
+      if(!m||retiradoEn(a,f)){flush();continue;}
+      if(m[a.id]==="A")run.push(f);else flush();
+    }
+    flush();
+  });
+  return out;
+}
+const CIT_CAMPOS=["id","curso","cursoNombre","alumnoId","alumno","rut","desde","hasta","fechas","dias","estado","fechaCita","horaCita","citadoPor","citadoEn","asistio","apoderado","motivo","fechaAsistio","obs","cerradoPor","cerradoEn"];
+const baseCit=it=>{const o={};CIT_CAMPOS.forEach(k=>{if(it[k]!==undefined)o[k]=it[k];});return o;};
+function unirCit(eps,docs,validos){
+  const byId={};docs.forEach(d=>{if(!validos||validos.has(d.curso))byId[d.id]=d;});
+  const out=[];const usados=new Set();
+  eps.forEach(e=>{const id=citId(e);const d=byId[id];usados.add(id);out.push(Object.assign({},d||{},e,{id,estado:(d&&d.estado)||"pendiente"}));});
+  Object.keys(byId).forEach(id=>{if(!usados.has(id))out.push(Object.assign({},byId[id]));});
+  out.sort((a,b)=>String(b.hasta).localeCompare(String(a.hasta))||String(a.alumno).localeCompare(String(b.alumno),"es"));
+  return out;
+}
+function estadoCit(it){
+  if(it.estado==="cerrada")return it.asistio?{k:"ok",t:"Justificó",s:"Asistió el "+fmtCL(it.fechaAsistio)+(it.apoderado?" · "+it.apoderado:"")}:{k:"mute",t:"No asistió",s:it.obs||""};
+  if(it.estado==="citado")return {k:"late",t:"Citado",s:fmtCL(it.fechaCita)+(it.horaCita?" "+it.horaCita:"")+" · esperando asistencia"};
+  return {k:"bad",t:"Pendiente de citar",s:""};
+}
+function textoFechas(it){const f=it.fechas&&it.fechas.length?it.fechas:[it.desde,it.hasta];return f.length>3?fmtDiaCorto(f[0])+" al "+fmtDiaCorto(f[f.length-1]):f.map(fmtDiaCorto).join(", ");}
+
+async function cargarCit(){
+  if(!db&&S.conectando){cit.cargando=false;renderCit(false);return;}
+  const seq=++cit.seq;cit.cargando=true;cit.error=null;renderCit(false);
+  const hoy=ymd(today);const ini=cit.desde||haceDias(hoy,45);
+  let regs=[],docs=[];
+  try{[regs,docs]=await Promise.all([store.todoRango(ini,hoy),store.listCit("")]);}catch(e){cit.error=e;}
+  if(seq!==cit.seq)return;
+  const byC={};regs.forEach(r=>{(byC[r.curso]=byC[r.curso]||[]).push(r);});
+  const cs=sortedCursos();const eps=[];
+  cs.forEach(c=>eps.push(...episodiosDe(c,byC[c.id]||[],ini,hoy)));
+  cit.items=unirCit(eps,docs,new Set(cs.map(c=>c.id)));
+  cit.cargando=false;
+  if(cit.pendOpen){const it=cit.items.find(x=>x.id===cit.pendOpen);cit.open=it?it.id:null;cit.pendOpen=null;}
+  renderCit(false);
+}
+function renderCit(recargar){
+  if(recargar){const sel=$("#citCurso");const cur=cit.curso;
+    sel.innerHTML='<option value="">Todos los cursos</option>'+sortedCursos().map(c=>`<option value="${esc(c.id)}">${esc(c.nombre)}</option>`).join("");
+    if(sortedCursos().some(c=>c.id===cur))sel.value=cur;else cit.curso="";
+    if(!$("#citDesde").value)$("#citDesde").value=cit.desde||haceDias(ymd(today),45);
+    cit.desde=$("#citDesde").value;
+    if(!cit.cargando)return cargarCit();
+  }
+  const n=$("#citNota");
+  if(!db&&S.conectando){n.hidden=false;n.className="notice";n.textContent="Conectando con la base de datos…";}
+  else if(cit.error){n.hidden=false;n.className="notice warn";n.textContent="No se pudo leer la información: "+((cit.error&&cit.error.message)||cit.error);}
+  else n.hidden=true;
+  const cnt={pend:0,citado:0,cerrada:0};
+  const q=H(cit.q);
+  const base=cit.items.filter(it=>(!cit.curso||it.curso===cit.curso)&&(!q||H(it.alumno+" "+it.rut+" "+it.cursoNombre).includes(q)));
+  base.forEach(it=>{cnt[it.estado==="cerrada"?"cerrada":it.estado==="citado"?"citado":"pend"]++;});
+  $("#cnPend").textContent=cnt.pend;$("#cnCitado").textContent=cnt.citado;$("#cnCerrada").textContent=cnt.cerrada;$("#cnTodas").textContent=base.length;
+  document.querySelectorAll("#citSeg button").forEach(b=>b.setAttribute("aria-pressed",b.dataset.v===cit.ver));
+  const vis=base.filter(it=>cit.ver==="todas"||(cit.ver==="pend"&&(it.estado||"pendiente")==="pendiente")||it.estado===cit.ver);
+  const t=$("#citTabla");
+  if(cit.cargando){t.innerHTML='<tbody><tr><td class="empty"><span class="spin dark"></span><br>Revisando la asistencia…</td></tr></tbody>';return;}
+  if(!vis.length){
+    const msg={pend:["Nada pendiente por citar","Ningún alumno tiene dos inasistencias seguidas sin citación en el período revisado."],citado:["Sin citaciones en espera","No hay apoderados citados esperando asistencia."],cerrada:["Sin citaciones cerradas","Aún no se ha cerrado ninguna citación."],todas:["Sin citaciones","No hay alumnos con dos inasistencias seguidas en el período revisado."]}[cit.ver];
+    t.innerHTML=`<tbody><tr><td class="empty"><b>${msg[0]}</b>${msg[1]}</td></tr></tbody>`;return;
+  }
+  t.innerHTML='<thead><tr><th>Alumno</th><th>Curso</th><th>Inasistencias seguidas</th><th>Estado</th><th></th></tr></thead><tbody>'+vis.map(it=>{
+    const e=estadoCit(it);
+    const acc=it.estado==="cerrada"
+      ?(it.asistio?`<button class="btn small" data-a="pdf">Descargar PDF</button> `:"")+`<button class="btn small" data-a="reabrir">Reabrir</button>`
+      :it.estado==="citado"
+        ?`<button class="btn small primary" data-a="abrir">Registrar resultado</button> <button class="btn small" data-a="pdf">PDF citación</button>`
+        :`<button class="btn small primary" data-a="abrir">Citar apoderado</button>`;
+    const fila=`<tr data-id="${esc(it.id)}"><td class="lv"><b>${esc(it.alumno)}</b><br><small class="mut">${esc(fmtRut(it.rut))}</small></td><td>${esc(it.cursoNombre)}</td><td class="lv">${esc(textoFechas(it))}<br><small class="mut">${it.dias} día${it.dias>1?"s":""} seguidos</small></td><td class="lv"><span class="pill ${e.k}">${e.t}</span>${e.s?`<br><small class="mut">${esc(e.s)}</small>`:""}${it.estado==="cerrada"&&it.motivo?`<br><small class="mut">Motivo: ${esc(it.motivo)}</small>`:""}</td><td class="acc">${acc}</td></tr>`;
+    return fila+(cit.open===it.id?formCit(it):"");
+  }).join("")+"</tbody>";
+}
+function proxLectivo(f,n){return moverLectivo(f,n);}
+function formCit(it){
+  if(it.estado==="citado"){
+    return `<tr class="citform" data-id="${esc(it.id)}"><td colspan="5"><div class="cf"><div class="cf-q"><b>¿El apoderado vino a justificar la inasistencia?</b>
+      <label class="rad"><input type="radio" name="cfAs" value="si"> Sí, vino</label><label class="rad"><input type="radio" name="cfAs" value="no"> No vino</label></div>
+      <div class="cf-si" hidden>
+        <div class="field"><label for="cfNom">Nombre del apoderado</label><input type="text" id="cfNom" autocomplete="off" maxlength="120"></div>
+        <div class="field"><label for="cfFa">Fecha en que asistió</label><input type="date" id="cfFa" value="${ymd(today)}"></div>
+        <div class="field wide"><label for="cfMot">Motivo de la justificación</label><textarea id="cfMot" rows="3" maxlength="600"></textarea></div>
+      </div>
+      <div class="cf-no" hidden><div class="field wide"><label for="cfObs">Observación (opcional)</label><input type="text" id="cfObs" autocomplete="off" maxlength="200" placeholder="Ej: no respondió a la llamada"></div></div>
+      <div class="cf-b"><button class="btn small primary" data-a="guardar-res" disabled>Guardar y cerrar</button><button class="btn small gold" data-a="guardar-res-pdf" disabled>Guardar y descargar PDF</button><button class="btn small" data-a="cancelar">Cancelar</button></div></div></td></tr>`;
+  }
+  const d0=proxLectivo(ymd(today),1);
+  return `<tr class="citform" data-id="${esc(it.id)}"><td colspan="5"><div class="cf"><div class="cf-row">
+      <div class="field"><label for="cfF">Fecha de citación</label><input type="date" id="cfF" value="${d0}"></div>
+      <div class="field"><label for="cfH">Hora</label><input type="time" id="cfH" value="08:30"></div></div>
+      <div class="cf-b"><button class="btn small primary" data-a="guardar-cita">Registrar citación</button><button class="btn small gold" data-a="guardar-cita-pdf">Registrar y descargar PDF</button><button class="btn small" data-a="cancelar">Cancelar</button></div></div></td></tr>`;
+}
+async function guardarCit(it,patch,detalle,pdf){
+  if(!S.canWrite)return toast("Su acceso es de solo lectura.");
+  const doc=Object.assign(baseCit(it),patch,{actualizado:new Date().toISOString()});
+  try{await store.saveCit(doc);}catch(e){return toast("No se pudo guardar. Intente de nuevo.");}
+  audit("Citación",detalle+" · "+it.alumno,{curso:it.cursoNombre});
+  const i=cit.items.findIndex(x=>x.id===it.id);const nuevo=Object.assign({},it,doc);
+  if(i>=0)cit.items[i]=nuevo;else cit.items.push(nuevo);
+  cit.open=null;renderCit(false);toast("Citación guardada");
+  asideCache={};scheduleAside();
+  if(pdf)pdfCit(nuevo);
+}
+$("#citTabla").addEventListener("click",async ev=>{
+  const bt=ev.target.closest("button[data-a]");if(!bt)return;
+  const tr=bt.closest("tr");const it=cit.items.find(x=>x.id===tr.dataset.id);if(!it)return;
+  const a=bt.dataset.a,hoy=ymd(today),quien=S.nombre||"";
+  if(a==="abrir"){if(!S.canWrite)return toast("Su acceso es de solo lectura.");cit.open=cit.open===it.id?null:it.id;renderCit(false);}
+  else if(a==="cancelar"){cit.open=null;renderCit(false);}
+  else if(a==="pdf")pdfCit(it);
+  else if(a==="reabrir"){await guardarCit(it,{estado:"citado",asistio:null,apoderado:"",motivo:"",fechaAsistio:"",obs:"",cerradoPor:"",cerradoEn:""},"Reabrió la citación",false);}
+  else if(a==="guardar-cita"||a==="guardar-cita-pdf"){
+    const f=$("#cfF").value,hh=$("#cfH").value;if(!f){$("#cfF").focus();return toast("Indique la fecha de citación.");}
+    await guardarCit(it,{estado:"citado",fechaCita:f,horaCita:hh,citadoPor:quien,citadoEn:new Date().toISOString()},"Citó al apoderado para el "+fmtCL(f)+(hh?" "+hh:""),a==="guardar-cita-pdf");
+  }
+  else if(a==="guardar-res"||a==="guardar-res-pdf"){
+    const si=(document.querySelector('input[name="cfAs"]:checked')||{}).value;if(!si)return;
+    if(si==="si"){
+      const nom=$("#cfNom").value.trim(),mot=$("#cfMot").value.trim();
+      if(!nom){$("#cfNom").focus();return toast("Escriba el nombre del apoderado.");}
+      if(!mot){$("#cfMot").focus();return toast("Escriba el motivo de la justificación.");}
+      await guardarCit(it,{estado:"cerrada",asistio:true,apoderado:nom,motivo:mot,fechaAsistio:$("#cfFa").value||hoy,obs:"",cerradoPor:quien,cerradoEn:new Date().toISOString()},"Apoderado "+nom+" justificó la inasistencia",a==="guardar-res-pdf");
+    }else{
+      await guardarCit(it,{estado:"cerrada",asistio:false,apoderado:"",motivo:"",fechaAsistio:"",obs:$("#cfObs").value.trim(),cerradoPor:quien,cerradoEn:new Date().toISOString()},"Cerró la citación: el apoderado no asistió",false);
+    }
+  }
+});
+$("#citTabla").addEventListener("change",ev=>{
+  if(ev.target.name!=="cfAs")return;
+  const f=ev.target.closest(".cf"),si=ev.target.value==="si";
+  f.querySelector(".cf-si").hidden=!si;f.querySelector(".cf-no").hidden=si;
+  f.querySelectorAll('[data-a^="guardar-res"]').forEach(b=>{b.disabled=false;if(b.dataset.a==="guardar-res-pdf")b.hidden=!si;});
+});
+document.querySelectorAll("#citSeg button").forEach(b=>b.addEventListener("click",()=>{cit.ver=b.dataset.v;cit.open=null;renderCit(false);}));
+$("#citCurso").addEventListener("change",e=>{cit.curso=e.target.value;cit.open=null;renderCit(false);});
+$("#citQ").addEventListener("input",e=>{cit.q=e.target.value;renderCit(false);});
+$("#citDesde").addEventListener("change",e=>{cit.desde=e.target.value;cargarCit();});
+$("#citLoad").addEventListener("click",()=>cargarCit());
+
+/* ---------- Cuadro lateral en Asistencia diaria ---------- */
+var asideT=null,asideSeq=0,asideCache={};
+function scheduleAside(){clearTimeout(asideT);asideT=setTimeout(renderAside,350);}
+async function renderAside(){
+  const box=$("#citAsideBody");if(!box)return;
+  const c=curso();
+  if(!c){box.innerHTML='<p class="ca-e">Seleccione un curso.</p>';$("#citAside").classList.remove("hay");return;}
+  if(!db&&S.conectando){box.innerHTML='<p class="ca-e">Conectando…</p>';return;}
+  const seq=++asideSeq;
+  const hoy=ymd(today),fin=S.fecha>hoy?hoy:S.fecha,ini=haceDias(fin,45);
+  const key=c.id+"|"+fin;let ch=asideCache[key];
+  if(!ch||Date.now()-ch.t>25000){
+    try{const [regs,docs]=await Promise.all([store.rango(c.id,ini,fin),store.listCit(c.id)]);ch=asideCache[key]={t:Date.now(),regs,docs};}
+    catch(e){return;}
+  }
+  if(seq!==asideSeq)return;
+  let regs=ch.regs.filter(r=>r.fecha!==S.fecha);
+  if(S.fecha<=fin&&esLectivo(S.fecha))regs=regs.concat([{fecha:S.fecha,marcas:S.marcas||{}}]);
+  const hechos=new Set(ch.docs.map(d=>d.id));
+  const eps=episodiosDe(c,regs,ini,fin).filter(e=>!hechos.has(citId(e))).sort((a,b)=>String(b.hasta).localeCompare(String(a.hasta)));
+  $("#citAside").classList.toggle("hay",eps.length>0);
+  if(!eps.length){box.innerHTML='<p class="ca-e">Ningún alumno de este curso tiene dos inasistencias seguidas sin citar.</p><button class="linkbtn" data-ir="todas" type="button">Ver todas las citaciones</button>';return;}
+  box.innerHTML='<ul class="ca-l">'+eps.slice(0,6).map(e=>`<li><div><b>${esc(e.alumno)}</b><small>${esc(textoFechas(e))} · ${e.dias} días</small></div><button class="btn small" data-citar="${esc(citId(e))}" type="button">Citar</button></li>`).join("")+"</ul>"+(eps.length>6?`<p class="ca-e">y ${eps.length-6} más…</p>`:"")+'<button class="linkbtn" data-ir="curso" type="button">Ver todas las citaciones</button>';
+}
+$("#citAside").addEventListener("click",ev=>{
+  const b=ev.target.closest("button");if(!b)return;const c=curso();
+  if(b.dataset.citar){cit.curso=c?c.id:"";cit.ver="pend";cit.q="";$("#citQ").value="";cit.pendOpen=b.dataset.citar;cit.open=null;setView("cit");}
+  else if(b.dataset.ir){cit.curso=b.dataset.ir==="curso"&&c?c.id:"";cit.ver="pend";cit.q="";$("#citQ").value="";setView("cit");}
+});
+
+/* ---------- PDF con logo ---------- */
+function pdfCit(it){
+  const J=window.jspdf&&window.jspdf.jsPDF;
+  if(!J){toast("No se pudo cargar el generador de PDF. Recargue la página.");return;}
+  const justif=it.estado==="cerrada"&&it.asistio;
+  const d=new J({unit:"mm",format:"a4"}),W=210,M=20;let y=16;
+  const img=document.querySelector(".band img");let lw=0;
+  try{if(img&&img.naturalWidth){const lh=30;lw=lh*img.naturalWidth/img.naturalHeight;d.addImage(img.src,"PNG",M,y,lw,lh);}}catch(e){lw=0;}
+  const tx=M+(lw?lw+6:0);
+  d.setTextColor(14,29,94);d.setFont("helvetica","bold");d.setFontSize(13);
+  d.text("INSTITUTO COMERCIAL",tx,y+9);d.text("ALBERTO VALENZUELA LLANOS",tx,y+15.5);
+  d.setFont("helvetica","normal");d.setFontSize(9.5);d.setTextColor(90,96,130);
+  d.text("San Fernando · Inspectoría General",tx,y+22);d.text("Avda. Manso de Velasco 389, San Fernando",tx,y+27);
+  y+=36;d.setDrawColor(216,174,22);d.setLineWidth(0.9);d.line(M,y,W-M,y);
+  y+=14;d.setTextColor(17,22,43);d.setFont("helvetica","bold");d.setFontSize(15);
+  d.text(justif?"CONSTANCIA DE JUSTIFICACIÓN DE INASISTENCIA":"CITACIÓN DE APODERADO",W/2,y,{align:"center"});
+  y+=7;d.setFont("helvetica","normal");d.setFontSize(10);d.setTextColor(90,96,130);
+  d.text("San Fernando, "+fmtCL(ymd(today)),W/2,y,{align:"center"});
+  y+=12;
+  const fila=(k,v)=>{d.setFont("helvetica","bold");d.setFontSize(10.5);d.setTextColor(14,29,94);d.text(k,M,y);d.setFont("helvetica","normal");d.setTextColor(17,22,43);const L=d.splitTextToSize(String(v||"—"),W-2*M-42);d.text(L,M+42,y);y+=6.2*L.length+1.2;};
+  fila("Estudiante",it.alumno);fila("RUT",fmtRut(it.rut));fila("Curso",it.cursoNombre);
+  const fechas=(it.fechas&&it.fechas.length?it.fechas:[it.desde,it.hasta]).map(fmtDia).join(", ");
+  fila("Inasistencias",fechas+" ("+it.dias+" día"+(it.dias>1?"s":"")+" seguidos)");
+  if(!justif&&it.fechaCita)fila("Citación",fmtDia(it.fechaCita)+(it.horaCita?", "+it.horaCita+" horas":""));
+  y+=4;d.setFontSize(11);d.setTextColor(17,22,43);d.setFont("helvetica","normal");
+  const cuerpo=justif
+    ?"Se deja constancia de que el día "+fmtDia(it.fechaAsistio)+" se presentó en Inspectoría General "+(it.apoderado||"el apoderado")+", en calidad de apoderado(a) del/la estudiante "+it.alumno+", del curso "+it.cursoNombre+", a justificar las inasistencias registradas en los días indicados."
+    :"Se cita a usted, en calidad de apoderado(a) del/la estudiante "+it.alumno+", del curso "+it.cursoNombre+", a presentarse en Inspectoría General"+(it.fechaCita?" el día "+fmtDia(it.fechaCita)+(it.horaCita?" a las "+it.horaCita+" horas":""):"")+", con el fin de justificar las inasistencias registradas en los días indicados.";
+  const L1=d.splitTextToSize(cuerpo,W-2*M);d.text(L1,M,y,{lineHeightFactor:1.5});y+=L1.length*6.6+4;
+  if(justif){
+    d.setFont("helvetica","bold");d.setTextColor(14,29,94);d.text("Motivo de la justificación",M,y);y+=6;
+    d.setFont("helvetica","normal");d.setTextColor(17,22,43);
+    const L2=d.splitTextToSize(it.motivo||"—",W-2*M-8);const h2=L2.length*6.2+6;
+    d.setDrawColor(205,211,228);d.setLineWidth(0.3);d.roundedRect(M,y-2,W-2*M,h2,2,2);d.text(L2,M+4,y+3.5);y+=h2+8;
+    fila("Apoderado(a)",it.apoderado);
+  }
+  const ys=Math.max(y+34,232);d.setDrawColor(90,96,130);d.setLineWidth(0.3);
+  d.line(M,ys,M+68,ys);d.line(W-M-68,ys,W-M,ys);
+  d.setFontSize(9.5);d.setTextColor(90,96,130);
+  d.text(justif?"Firma apoderado(a)":"Recepción apoderado(a)",M+34,ys+5,{align:"center"});
+  d.text("Inspectoría General",W-M-34,ys+5,{align:"center"});
+  if(S.nombre)d.text(S.nombre,W-M-34,ys+10,{align:"center"});
+  d.setFontSize(8);d.setTextColor(140);
+  d.text("Documento generado el "+fmtCL(ymd(today))+" a las "+pad(new Date().getHours())+":"+pad(new Date().getMinutes())+" desde el sistema Control de Asistencia Diaria.",W/2,286,{align:"center"});
+  d.save((justif?"constancia":"citacion")+"_"+slug(it.cursoNombre)+"_"+slug(it.alumno).slice(0,30)+"_"+ymd(today)+".pdf");
+}
+
 /* ---------- Auditoría ---------- */
 const AUD_MAX=400;let audQ=Promise.resolve(),audDir=false;
 function audit(accion,detalle,extra){
@@ -1115,7 +1433,7 @@ function renderList(){
   }).join("");
   stats(als);
 }
-function statsNo(){["#sMat","#sP","#sA","#sS","#sPct"].forEach(k=>$(k).textContent="—");$("#sBar").style.width="0";}
+function statsNo(){scheduleAside();["#sMat","#sP","#sA","#sS","#sPct"].forEach(k=>$(k).textContent="—");$("#sBar").style.width="0";}
 function stats(als){
   const vig=als.filter(a=>!retiradoEn(a,S.fecha));
   const cnt={P:0,A:0};vig.forEach(a=>{const v=S.marcas[a.id];if(cnt[v]!=null)cnt[v]++;});
@@ -1124,6 +1442,7 @@ function stats(als){
   const pct=reg?(cnt.P/vig.length*100):null;
   $("#sPct").textContent=pct==null?"—":pct.toFixed(1).replace(".",",")+"%";
   $("#sBar").style.width=(pct||0)+"%";
+  scheduleAside();
 }
 
 /* Guardado automático */
@@ -1170,10 +1489,11 @@ document.querySelectorAll(".tabs button").forEach(b=>b.addEventListener("click",
 function setView(v){
   S.view=v;
   document.querySelectorAll(".tabs button").forEach(b=>b.setAttribute("aria-selected",b.dataset.view===v));
-  $("#v-dia").hidden=v!=="dia";$("#v-mes").hidden=v!=="mes";$("#v-anual").hidden=v!=="anual";$("#v-cursos").hidden=v!=="cursos";$("#v-general").hidden=v!=="general";$("#v-cal").hidden=v!=="cal";$("#v-aud").hidden=v!=="aud";$("#v-acc").hidden=v!=="acc";
-  document.querySelector(".field.curso").hidden=v==="general"||v==="cal"||v==="aud"||v==="acc";
+  $("#v-dia").hidden=v!=="dia";$("#v-mes").hidden=v!=="mes";$("#v-anual").hidden=v!=="anual";$("#v-cursos").hidden=v!=="cursos";$("#v-general").hidden=v!=="general";$("#v-cal").hidden=v!=="cal";$("#v-aud").hidden=v!=="aud";$("#v-acc").hidden=v!=="acc";$("#v-cit").hidden=v!=="cit";
+  document.querySelector(".field.curso").hidden=v==="general"||v==="cal"||v==="aud"||v==="acc"||v==="cit";
   if(v==="aud")renderAud(true);
   if(v==="acc")renderAcc();
+  if(v==="cit")renderCit(true);
   if(v==="cal")renderCal();
   $("#fFecha").hidden=v!=="dia";$("#fMes").hidden=v!=="mes";
   if(v==="mes")renderMes();
@@ -1803,8 +2123,8 @@ $("#delCurso").addEventListener("click",()=>{if(S.canWrite)$("#delConfirm").hidd
 $("#delNo").addEventListener("click",()=>$("#delConfirm").hidden=true);
 $("#delYes").addEventListener("click",async()=>{const id=S.rosterId;const c=S.cursos[id];try{await store.delCurso(id);S.rosterId=null;toast("Curso eliminado");audit("Curso","Eliminó el curso "+(c?.nombre||id)+" ("+((c?.alumnos||[]).length)+" alumnos en la nómina)",{curso:c?.nombre||id});}catch(e){toast("No se pudo eliminar el curso.");}});
 
-window.addEventListener("hashchange",()=>{const h=location.hash.slice(1);if(["dia","mes","anual","general","cal","aud","cursos","acc"].includes(h)&&(h!=="acc"||S.maestro))setView(h);});
-const h0=location.hash.slice(1);if(["mes","anual","general","cal","aud","cursos"].concat(S.maestro?["acc"]:[]).includes(h0))setView(h0);
+window.addEventListener("hashchange",()=>{const h=location.hash.slice(1);if(["dia","mes","anual","general","cal","aud","cursos","acc","cit"].includes(h)&&(h!=="acc"||S.maestro))setView(h);});
+const h0=location.hash.slice(1);if(["mes","anual","general","cal","aud","cursos","cit"].concat(S.maestro?["acc"]:[]).includes(h0))setView(h0);
 boot();
 })();
 </script>
